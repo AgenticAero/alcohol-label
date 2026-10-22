@@ -165,3 +165,85 @@ class ApplicationData:
         if self.is_imported:
             required.append(FieldId.COUNTRY_OF_ORIGIN)
         return tuple(f for f in required if getattr(self, f.value) is None)
+
+
+@dataclass(frozen=True, slots=True)
+class BoundingBox:
+    """Region of an image as fractions of its width and height (0 to 1)."""
+
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+    def __post_init__(self) -> None:
+        coords = (self.left, self.top, self.right, self.bottom)
+        if not all(0 <= c <= 1 for c in coords):
+            raise ValueError("bounding box coordinates must be within 0 and 1")
+        if self.left >= self.right or self.top >= self.bottom:
+            raise ValueError("bounding box must have positive width and height")
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceLocation:
+    """Where on an image an observation was found; a box, a crop, or both."""
+
+    box: BoundingBox | None = None
+    crop_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.crop_ref is not None and not self.crop_ref.strip():
+            raise ValueError("crop_ref must be None or non-blank")
+        if self.box is None and self.crop_ref is None:
+            raise ValueError("location needs a bounding box or crop_ref")
+
+
+@dataclass(frozen=True, slots=True)
+class Observation:
+    """One candidate reading from one image.
+
+    ``raw_text`` is kept verbatim (case, punctuation, whitespace); it is never
+    normalized. ``parsed_value`` is a separate, optional interpretation.
+    ``image_id`` matches ``ImageReference.image_id`` and implies no front/back.
+    """
+
+    raw_text: str
+    image_id: str
+    parsed_value: str | Decimal | Measurement | None = None
+    location: EvidenceLocation | None = None
+
+    def __post_init__(self) -> None:
+        if not self.raw_text:
+            raise ValueError("raw_text must not be empty")
+        if not self.image_id.strip():
+            raise ValueError("image_id must not be blank")
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractedField:
+    """What extraction found for one field, independent of expected values.
+
+    Conflicting observations are all kept; none is selected. Unknowns use an
+    explicit state with no observations (or only uncertain candidates) and an
+    explanation. No confidence score is carried.
+    """
+
+    field_id: FieldId
+    state: ExtractionState
+    observations: tuple[Observation, ...] = ()
+    explanation: str | None = None
+
+    def __post_init__(self) -> None:
+        count = len(self.observations)
+        if self.state is ExtractionState.OBSERVED and count != 1:
+            raise ValueError("observed requires exactly one observation")
+        if self.state is ExtractionState.MISSING and count != 0:
+            raise ValueError("missing must have no observations")
+        if self.state is ExtractionState.CONFLICTING and (
+            count < 2 or len({o.raw_text for o in self.observations}) < 2
+        ):
+            raise ValueError("conflicting requires differing observations")
+        if self.state is not ExtractionState.OBSERVED and not (
+            self.explanation and self.explanation.strip()
+        ):
+            raise ValueError(f"{self.state.value} requires an explanation")

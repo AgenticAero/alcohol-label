@@ -112,6 +112,14 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 - Required inputs: brand, class/type, alcohol content, net contents, producer name and producer address; country of origin is additionally required when `is_imported` is true. Missing required inputs do not raise; `missing_required_fields()` reports them so later checks can be `not_evaluated` or `needs_review`, never a pass. A supplied country for a domestic product is accepted but not required.
 - `beverage_category` is a `BeverageCategory` enum with only `distilled_spirits`, matching prototype scope.
 
+`ExtractedField` holds extraction output only and never references `ApplicationData`. Decisions:
+
+- `ExtractedField(field_id, state, observations, explanation)`; each `Observation` has verbatim `raw_text`, `image_id`, optional `parsed_value` (`str | Decimal | Measurement | None`) and optional `EvidenceLocation`. Raw text is never normalized; parsing is a separate, later step.
+- `image_id` matches `ImageReference.image_id`. Images are not classified as front/back. Checking that an ID belongs to the supplied images is left to the verification boundary.
+- `EvidenceLocation` is a normalized `BoundingBox` (fractions 0 to 1 of image width/height), a `crop_ref` string, or both.
+- State rules: `observed` has exactly one observation; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
+- Boldness observations remain a separate later structure; a warning transcription cannot establish font weight.
+
 #### Shared identifiers and states
 
 These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label/schemas.py`.
