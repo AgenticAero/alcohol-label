@@ -238,6 +238,7 @@ class ExtractedField:
     explanation: str | None = None
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "observations", tuple(self.observations))
         if not isinstance(self.state, ExtractionState):
             raise ValueError("state must be an ExtractionState")
         count = len(self.observations)

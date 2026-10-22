@@ -149,6 +149,16 @@ def test_observed_field_carries_source_image_and_location():
     assert field.explanation is None
 
 
+def test_extracted_field_copies_observations_to_immutable_tuple():
+    observation = Observation("45% Alc./Vol.", "img-1")
+    observations = [observation]
+
+    field = ExtractedField(FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, observations)
+    observations.clear()
+
+    assert field.observations == (observation,)
+
+
 def test_conflicting_observations_are_all_preserved_in_order():
     first = Observation("OLD TOM", "img-1")
     second = Observation("Old Tom Reserve", "img-2")
