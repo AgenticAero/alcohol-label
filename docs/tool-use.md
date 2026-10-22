@@ -30,6 +30,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks still needed:** Developer review of the final scope and assumptions against the assignment, confirmation of Jira contents, and validation of technical choices through implementation and measurement.
 - **Limitations:** Planning assistance and document checks do not establish application correctness, extraction accuracy, deployment success or five-second performance.
 
+### 2026-10-22 — AL-23 shared identifiers and states
+
+- **Tool / version:** GitHub Copilot (VS Code agent); model reported as Claude Sonnet 5.5.
+- **Purpose:** Implement AL-23 enums and document state meanings.
+- **Inputs:** AL-23/AL-5 acceptance criteria, README, engineering plan, `pyproject.toml`.
+- **Output used:** `src/alcohol_label/schemas.py`, `tests/test_schemas.py`, Data contracts section of the engineering plan.
+- **Human review / changes:** Developer chose separate `producer_name`/`producer_address` and no style fields in `FieldId`; diff pending developer review.
+- **Checks performed:** See the commands recorded in the AL-23 completion summary; offline enum and contract tests only.
+- **Pending checks / limitations:** No live extraction, UI or performance testing occurred.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
