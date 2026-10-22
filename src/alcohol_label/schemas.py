@@ -217,6 +217,10 @@ class Observation:
             raise ValueError("raw_text must not be empty")
         if not self.image_id.strip():
             raise ValueError("image_id must not be blank")
+        if self.parsed_value is not None and not isinstance(
+            self.parsed_value, (str, Decimal, Measurement)
+        ):
+            raise ValueError("parsed_value must be str, Decimal, Measurement, or None")
 
 
 @dataclass(frozen=True, slots=True)
