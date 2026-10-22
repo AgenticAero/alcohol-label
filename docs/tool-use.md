@@ -40,6 +40,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks performed:** See the commands recorded in the AL-23 completion summary; offline enum and contract tests only.
 - **Pending checks / limitations:** No live extraction, UI or performance testing occurred.
 
+### 2026-10-22 — AL-24 application data structure
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Define the application input record using the AL-23 identifiers.
+- **Inputs:** AL-24 and AL-5 retrieved from Jira, shared schemas, and Data contracts section of the engineering plan.
+- **Output used:** `ApplicationData`, `Measurement`, `ImageReference`, related enums, focused schema tests, and documented required/conditional inputs.
+- **Human review / changes:** An initial draft written before Jira was reachable (FieldId-keyed mapping) was reworked against the actual acceptance criteria: decimal values with explicit units, one or two images, `None` for unsupplied values, import-conditional country of origin.
+- **Checks performed:** `poetry run pytest` (16 passed); `poetry run ruff check .` (passed after fixing 5 FURB157 findings); `poetry run ruff format .` (no changes).
+- **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.

@@ -6,7 +6,7 @@
 - The planned core is one distilled-spirit application with manual expected values and one or two label images. A second image is optional. Confirm current scope in the engineering plan before extending it.
 - Keep expected application values separate from image observations. Preserve raw text, evidence references, uncertainty and conflicting observations. Keep processing failures separate from extraction states and check outcomes. Unresolved checks must not become successful verification.
 - Follow the existing naming and package conventions. Prefer standard-library types and small modules; add a dependency only when the current task requires it.
-- Document meaningful contract and architecture decisions in the existing engineering plan. Keep one concise entry for meaningful AI-assisted work and actual verification in the tool-use record. Avoid new planning documents or copies of the Jira backlog.
+- Document meaningful contract and architecture decisions in the existing engineering plan.  Avoid new planning documents or copies of the Jira backlog.
 - Run checks appropriate to the change and report the actual commands and results. Add focused tests for project-specific behavior or contract regressions when warranted; avoid tests that merely repeat standard-library behavior. Mark skipped or blocked checks explicitly. Distinguish schema checks from live extraction and hosted performance evaluation.
 - Propose Conventional Commit messages with the Jira key. Summarize changed files, acceptance-criteria coverage and remaining uncertainty. Commit and push only when requested.
 

@@ -103,6 +103,15 @@ Define typed records for:
 
 Use `null` and explicit states for unknowns. Do not manufacture a confidence percentage: provider or model confidence is not a calibrated probability of correctness.
 
+`ApplicationData` (in `src/alcohol_label/schemas.py`) holds application claims only, independent of image extraction. Decisions:
+
+- Expected values are typed attributes named after `FieldId` (`brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`); producer name and address stay separate. `warning_text` is not an application input because the canonical warning is pinned in code.
+- `alcohol_content` and `net_contents` are `Measurement(value: Decimal, unit: Unit)`. Values must be positive finite `Decimal`s; alcohol uses `percent_abv` and net contents uses `ml`, `l` or `fl_oz`. Unit conversion belongs to the comparison step, not this record.
+- Unsupplied values are `None`; nothing is defaulted, and blank text is rejected rather than treated as a value.
+- `images` holds one or two `ImageReference(image_id, uri)` records (second image optional, unique IDs, no image content). Structural violations raise `ValueError`.
+- Required inputs: brand, class/type, alcohol content, net contents, producer name and producer address; country of origin is additionally required when `is_imported` is true. Missing required inputs do not raise; `missing_required_fields()` reports them so later checks can be `not_evaluated` or `needs_review`, never a pass. A supplied country for a domestic product is accepted but not required.
+- `beverage_category` is a `BeverageCategory` enum with only `distilled_spirits`, matching prototype scope.
+
 #### Shared identifiers and states
 
 These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label/schemas.py`.
