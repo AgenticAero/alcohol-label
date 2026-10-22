@@ -1,0 +1,163 @@
+# Evaluation
+
+**Status: Not yet evaluated.** This document defines planned checks and provides space for actual evidence. No application test, accuracy or performance result is asserted below.
+
+Scope and technical decisions belong in [engineering-plan.md](engineering-plan.md). Tool and AI usage belong in [tool-use.md](tool-use.md). Jira tracks work and defects; this document records evaluation evidence.
+
+## 1. Evaluation scope
+
+Evaluate one application at a time using English-language U.S. distilled-spirit labels, manual expected application values, and one or two clear JPEG/PNG images. Check the supported common fields and separate warning wording, heading case and visual-style outcomes.
+
+The proposed speed target is p95 Verify-to-result at or below five seconds. This is our operational interpretation of the assignment's approximate five-second expectation, not an independently supplied service-level agreement.
+
+Wine/beer-specific rules, advanced image correction and 200–300 application batches are outside the committed prototype scope. Evaluate optional small-batch support separately if implemented. Any unsupported warning-style check must remain explicit; a manual-review fallback does not establish automated formatting verification.
+
+## 2. Test data — planned
+
+Start with four visually verified scenarios: a clear match, case-only brand variation, ABV mismatch and changed warning text. Grow the set to at least ten annotated scenarios and reserve at least two distinct layouts/examples that were not used to tune extraction.
+
+Store reusable inputs and annotations in `tests/fixtures/`. Keep one fixture manifest alongside them; link it here when created instead of duplicating every annotation in this document.
+
+**Fixture manifest:** Pending creation.
+
+For each scenario, record:
+
+- Stable scenario ID, image filenames and application ID; associate front/back images with the same application.
+- Source/provenance and permission to use the images; whether synthetic or public.
+- Expected application values and separately annotated text/style actually visible in the images.
+- Expected check outcomes, deliberately introduced defects and any ambiguous evidence.
+- Image dimensions/size, development versus held-out designation, and annotation reviewer/date.
+
+Inspect the actual pixels. A generation prompt or expected application value is not evidence of what the label contains. Keep held-out examples out of prompt/rule tuning; if used for tuning, reclassify them and record the change.
+
+## 3. Planned checks
+
+These are test intentions, not passing results. One fixture may exercise several checks.
+
+| ID | Scenario | Expected behavior |
+| --- | --- | --- |
+| EV01 | Clear matching label and application | Supported comparisons pass; unresolved checks remain visible. |
+| EV02 | `STONE'S THROW` versus `Stone's Throw` | Brand matches under documented normalization. |
+| EV03 | Substantively different brand | Discrepancy; no broad fuzzy acceptance. |
+| EV04 | Expected ABV 40%, label 45% | Discrepancy showing both values. |
+| EV05 | Expected 750 mL, label 0.75 L | Match after supported unit conversion. |
+| EV06 | Class/type, producer/address and import-origin cases | Apply documented comparison/applicability rules; missing data cannot pass. |
+| EV07 | Warning word omitted or changed | Wording discrepancy without autocorrecting the observation. |
+| EV08 | Title-case warning heading | Separate heading-case discrepancy. |
+| EV09 | Bold heading, non-bold heading, entirely bold warning | Separate heading/body style outcomes; uncertain or unsupported style requires review. |
+| EV10 | Warning on supplied back image | Use both images before assessing whether evidence is missing. |
+| EV11 | Unreadable/cropped evidence or conflicting observations | Needs review with evidence and reason; no all-clear result. |
+| EV12 | Missing expected application value | Actionable incomplete input or Not evaluated. |
+| EV13 | Corrupt/oversized image or unsupported format | Useful error; session remains usable. |
+| EV14 | Timeout, blocked endpoint, rate error or invalid response | Controlled processing failure; preserve inputs and provide recovery. |
+| EV15 | Reviewer workflow | Check previews, labels, keyboard navigation, readable statuses and recovery. |
+| EV16 | Fresh setup and evaluator access | Documented installation/run/test steps work; deployed app and repository are accessible as intended. |
+
+## 4. Methods — planned
+
+### Automated and manual checks
+
+1. Test pure comparison/applicability rules without network calls.
+2. Test adapter parsing and error handling using controlled responses. These tests validate behavior, not real extraction accuracy.
+3. Evaluate actual extraction on annotated images, including held-out examples.
+4. Manually walk through match, discrepancy, Needs review and processing-error states.
+5. Follow README from a clean environment and check the deployed revision in a fresh browser session.
+
+Record the actual commands and outcomes when run. Link to test output or CI evidence rather than copying long logs. Mark skipped, blocked and unsupported checks explicitly.
+
+### Correctness measurements
+
+Report raw counts and denominators alongside any rates:
+
+- **Extraction correctness:** correctly extracted fields / annotated eligible fields. Report missing and ambiguous outputs separately.
+- **Defect detection:** seeded defects explicitly identified as discrepancies / seeded defects evaluated. Needs review is reported separately from detection.
+- **False accept:** a known defective check is reported as passing. Also record any application-level all-clear with a known defect or unresolved relevant check.
+- **False discrepancy:** a known acceptable check is reported as a discrepancy.
+- **Review burden:** applications requiring review / applications evaluated, with reasons.
+- **Processing failures:** attempted reviews that did not produce a completed verification result.
+
+The proposed acceptance goal is zero false accepts on the small critical-defect suite. Even if achieved, this supports only a claim about that suite, not general regulatory accuracy. Sending everything to review is not successful automation.
+
+### Verify-to-result performance
+
+- Measure at least twenty uncached hosted review attempts across the annotated scenarios, including held-out examples. Repeated runs measure timing variability; they do not create independent accuracy examples.
+- Start at the Verify action and stop when the completed result is visible. A spinner, acknowledgement or partial result is not completion. Server-only timings must be labelled separately if client-visible timing is unavailable.
+- Report prior upload/page-load time separately. Record image count, sizes, hosting conditions and concurrent workload.
+- Record cold/warm conditions and any result caching. Do not use cached results to claim uncached performance.
+- Record every attempt, including timeouts and failures. Report completed-result latency statistics alongside completion/failure counts; fast error responses do not count as successful results.
+- Report median, p95 and maximum. For reproducibility, use nearest-rank p95: sort completed-run durations and select rank `ceil(0.95 × n)` (one-based). State `n` and the method with results.
+- Also report completed results within five seconds / all attempts. This exposes reliability gaps that a success-only p95 can hide.
+- Disclose that twenty attempts give a preliminary estimate. Separate cold-start observations; identify which conditions are included in each summary.
+
+Batch throughput and queue delay require separate measurement if batch support is implemented.
+
+## 5. Actual results
+
+**No runs recorded.** All tables below are placeholders. Use “Not run,” “Blocked” or “Not measured” rather than zero where evidence is absent.
+
+### Run context
+
+| Item | Recorded value |
+| --- | --- |
+| Run ID / date / evaluator | Not recorded |
+| Git commit / deployed revision / URL | Not recorded |
+| Dataset version and scenario IDs | Not recorded |
+| Python / dependency lock revision | Not recorded |
+| Extraction provider / model / prompt or schema version | Not recorded |
+| Host / resources / cold or warm conditions | Not recorded |
+| Input profile / concurrent workload / caching | Not recorded |
+| Commands and evidence links | Not recorded |
+
+### Check results
+
+Add rows for completed or attempted checks; reference the planned check IDs and fixture IDs.
+
+| Run / check / fixture IDs | Expected outcome | Actual outcome | Status | Evidence / defect link |
+| --- | --- | --- | --- | --- |
+| — | — | — | Not run | — |
+
+Use Pass, Fail, Blocked, Not run or Not supported for **evaluation status**. Keep these distinct from the app's Match, Discrepancy, Needs review and other product outcomes: a test may pass because the app correctly reports a discrepancy.
+
+### Correctness summary
+
+| Metric | Count / denominator | Notes / evidence |
+| --- | --- | --- |
+| Correctly extracted fields | Not measured | — |
+| Seeded defects detected | Not measured | — |
+| False accepts | Not measured | — |
+| False discrepancies | Not measured | — |
+| Applications requiring review | Not measured | — |
+| Processing failures | Not measured | — |
+
+### Performance summary
+
+| Run group / conditions | Attempts / completed / failed | Median | p95 | Maximum | Completed within 5 s / all attempts |
+| --- | --- | --- | --- | --- | --- |
+| Not measured | — | — | — | — | — |
+
+**Target assessment:** Not evaluated.
+
+Link to raw timing evidence when available. Include attempt ID, scenario ID, duration, outcome and cold/warm state so summary calculations can be reproduced. Do not include credentials or sensitive uploaded content.
+
+## 6. Known failures and limitations
+
+**Observed failures:** None recorded because evaluation has not yet been performed. This is not evidence that no failures exist.
+
+| Finding ID | Scenario / observed behavior | Impact | Evidence / Jira issue | Mitigation or next step | Retest result |
+| --- | --- | --- | --- | --- | --- |
+| — | No observed findings recorded | — | — | Run evaluation | Not run |
+
+Declared scope limitations include clear-image/distilled-spirit coverage, small sample size, deferred large batches, and inability to establish physical type size or container-wide placement from arbitrary images. Record actual visual-style support and measured performance gaps after evaluation; do not imply they have been resolved.
+
+When a defect is fixed, retain the original finding and add the retest commit/result. A completed measurement task does not mean its product target was met.
+
+## 7. Submission assessment
+
+Complete after final evaluation:
+
+- **Verified behavior:** Pending.
+- **Unmet requirements and measured target misses:** Pending evaluation.
+- **Unsupported/deferred scope:** Confirm against the implemented app and engineering plan.
+- **Clean setup and fresh-session access:** Not checked.
+- **Final commit / deployed revision:** Not recorded.
+- **Remaining risks for the evaluator:** Pending.
