@@ -238,6 +238,8 @@ class ExtractedField:
     explanation: str | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.state, ExtractionState):
+            raise ValueError("state must be an ExtractionState")
         count = len(self.observations)
         if self.state is ExtractionState.OBSERVED and count != 1:
             raise ValueError("observed requires exactly one observation")
