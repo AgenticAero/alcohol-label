@@ -5,12 +5,16 @@ import pytest
 from alcohol_label.schemas import (
     ApplicationData,
     BeverageCategory,
+    BoundingBox,
     CheckId,
     CheckOutcome,
+    EvidenceLocation,
+    ExtractedField,
     ExtractionState,
     FieldId,
     ImageReference,
     Measurement,
+    Observation,
     Unit,
 )
 
@@ -122,3 +126,110 @@ def test_structurally_invalid_application_data_is_rejected(overrides):
 def test_measurement_requires_positive_finite_decimal(value):
     with pytest.raises(ValueError):
         Measurement(value, Unit.PERCENT_ABV)
+
+
+def test_observation_preserves_raw_text_separately_from_parsed_value():
+    raw = "  Old Tom's  RESERVE\u2019 "
+    obs = Observation(raw, "img-1", parsed_value=Decimal("45.0"))
+
+    assert obs.raw_text == raw
+    assert obs.parsed_value == Decimal("45.0")
+    assert Observation(raw, "img-1").parsed_value is None
+
+
+def test_observed_field_carries_source_image_and_location():
+    box = BoundingBox(0.1, 0.2, 0.5, 0.4)
+    obs = Observation(
+        "45% Alc./Vol.", "img-2", location=EvidenceLocation(box, "crop-7")
+    )
+    field = ExtractedField(FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, (obs,))
+
+    assert field.observations[0].image_id == "img-2"
+    assert field.observations[0].location.box == box
+    assert field.explanation is None
+
+
+def test_extracted_field_copies_observations_to_immutable_tuple():
+    observation = Observation("45% Alc./Vol.", "img-1")
+    observations = [observation]
+
+    field = ExtractedField(FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, observations)
+    observations.clear()
+
+    assert field.observations == (observation,)
+
+
+def test_conflicting_observations_are_all_preserved_in_order():
+    first = Observation("OLD TOM", "img-1")
+    second = Observation("Old Tom Reserve", "img-2")
+    field = ExtractedField(
+        FieldId.BRAND,
+        ExtractionState.CONFLICTING,
+        (first, second),
+        "Front and back labels disagree.",
+    )
+
+    assert field.observations == (first, second)
+
+
+def test_unknowns_use_none_state_and_explanation_and_uncertain_may_hold_candidates():
+    missing = ExtractedField(
+        FieldId.NET_CONTENTS, ExtractionState.MISSING, explanation="Not in images."
+    )
+    uncertain = ExtractedField(
+        FieldId.WARNING_TEXT,
+        ExtractionState.UNCERTAIN,
+        (Observation("GOVERNMENT WARN", "img-1"),),
+        "Text is cut off.",
+    )
+
+    assert missing.observations == ()
+    assert len(uncertain.observations) == 1
+
+
+@pytest.mark.parametrize(
+    ("state", "observations", "explanation"),
+    [
+        (ExtractionState.OBSERVED, (), None),
+        (
+            ExtractionState.OBSERVED,
+            (Observation("a", "i"), Observation("b", "i")),
+            None,
+        ),
+        (ExtractionState.MISSING, (Observation("a", "i"),), "x"),
+        (ExtractionState.MISSING, (), None),
+        (ExtractionState.UNCERTAIN, (), "  "),
+        (ExtractionState.CONFLICTING, (Observation("a", "i"),), "x"),
+        (
+            ExtractionState.CONFLICTING,
+            (Observation("a", "i"), Observation("a", "j")),
+            "x",
+        ),
+        (
+            ExtractionState.CONFLICTING,
+            (Observation("a", "i"), Observation("b", "i")),
+            None,
+        ),
+    ],
+)
+def test_extracted_field_state_rules_reject_inconsistent_records(
+    state, observations, explanation
+):
+    with pytest.raises(ValueError):
+        ExtractedField(FieldId.BRAND, state, observations, explanation)
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: BoundingBox(0.5, 0.1, 0.4, 0.9),
+        lambda: BoundingBox(0, 0, 1.2, 1),
+        lambda: EvidenceLocation(),
+        lambda: EvidenceLocation(crop_ref=" "),
+        lambda: Observation("", "img-1"),
+        lambda: Observation("text", " "),
+    ],
+)
+def test_invalid_evidence_structures_are_rejected(build):
+    with pytest.raises(ValueError):
+        build()

@@ -50,6 +50,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks performed:** `poetry run pytest` (16 passed); `poetry run ruff check .` (passed after fixing 5 FURB157 findings); `poetry run ruff format .` (no changes).
 - **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
 
+### 2026-10-22 — AL-25 ExtractedField and source evidence
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Define extraction output records that preserve source, raw text and uncertainty.
+- **Inputs:** AL-25 acceptance criteria from Jira, existing schemas, Data contracts section; developer chose record shape, parsed-value types, normalized bounding box and candidates for uncertain fields.
+- **Output used:** `Observation`, `ExtractedField`, `EvidenceLocation`, `BoundingBox`, schema tests, Data contracts documentation.
+- **Human review / changes:** Diff pending developer review.
+- **Checks performed:** `poetry run pytest` (34 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
+- **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
