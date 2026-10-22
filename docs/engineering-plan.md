@@ -103,11 +103,40 @@ Define typed records for:
 
 Use `null` and explicit states for unknowns. Do not manufacture a confidence percentage: provider or model confidence is not a calibrated probability of correctness.
 
+#### Shared identifiers and states
+
+These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label/schemas.py`.
+
+- `FieldId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, `warning_text`. `producer_name` and `producer_address` represent the producer/bottler information within prototype scope and are kept separate so extraction, comparison and explanations can differ (for example, name matches; address needs review). Use these names consistently in application and extraction models. `warning_text` is the raw warning transcription.
+- `CheckId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, plus four distinct warning checks: `warning_wording`, `warning_heading_case`, `warning_heading_bold`, `warning_body_not_bold`.
+- Visual observations supporting boldness checks are not fields. Transcription alone cannot establish font weight, so a later typed structure must preserve them separately from `FieldId`.
+
+`ExtractionState` describes what extraction found for a field:
+
+| State | Meaning |
+| --- | --- |
+| `observed` | A candidate value was extracted. This does not establish a match. |
+| `missing` | Extraction found no candidate in the supplied evidence. This does not establish absence from the entire bottle. |
+| `uncertain` | Available evidence does not support a reliable observation. |
+| `conflicting` | Multiple observations disagree and remain unresolved. |
+
+`CheckOutcome` describes a check result; see the Results policy for aggregate rules:
+
+| Outcome | Meaning |
+| --- | --- |
+| `match` | An applicable comparison or check was evaluated and passed. |
+| `discrepancy` | Sufficient evidence establishes a supported mismatch. |
+| `needs_review` | Evidence is insufficient or ambiguous. |
+| `not_applicable` | A documented applicability rule excludes the check. |
+| `not_evaluated` | A relevant check was not performed or lacks required input. |
+
+Processing failures, such as a timeout or invalid provider response, are neither extraction states nor check outcomes. They use a separate error contract defined in a later subtask.
+
 ### Results policy
 
 | Outcome | Meaning |
 | --- | --- |
-| Match / Passed check | The supported comparison or rule was actually evaluated and passed. |
+| Match | The supported comparison or rule was actually evaluated and passed. |
 | Discrepancy | Observed evidence differs from the expected value or a supported rule. |
 | Needs review | Evidence is unreadable, ambiguous, incomplete, or insufficient to establish the result. |
 | Not applicable | A documented applicability rule excludes this check. |
