@@ -290,11 +290,11 @@ class EvidenceRef:
     def __post_init__(self) -> None:
         if not isinstance(self.field_id, FieldId):
             raise TypeError("field_id must be a FieldId")
-        if (
-            not isinstance(self.observation_index, int)
-            or isinstance(self.observation_index, bool)
-            or self.observation_index < 0
+if not isinstance(self.observation_index, int) or isinstance(
+            self.observation_index, bool
         ):
+            raise TypeError("observation_index must be an integer")
+        if self.observation_index < 0:
             raise ValueError("observation_index must be a non-negative integer")
         if not self.image_id.strip():
             raise ValueError("image_id must not be blank")
