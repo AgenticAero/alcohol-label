@@ -449,3 +449,279 @@ class ReviewResponse:
         return self.status is ReviewStatus.COMPLETE and all(
             r.outcome in _CLEAR_OUTCOMES for r in self.check_results
         )
+
+
+# JSON-compatible serialization. Decimals are strings and enums are their
+# values. Typed values are tagged so str, Decimal and Measurement survive a
+# round trip. Malformed input raises ValueError (or TypeError from the models).
+
+
+def _value_to_json(value: str | Decimal | Measurement | None) -> object:
+    if value is None or isinstance(value, str):
+        return value
+    if isinstance(value, Decimal):
+        return {"decimal": str(value)}
+    return {"measurement": {"value": str(value.value), "unit": value.unit.value}}
+
+
+def _decimal_from_json(text: object) -> Decimal:
+    if not isinstance(text, str):
+        raise TypeError("decimal values must be serialized as strings")
+    try:
+        return Decimal(text)
+    except ArithmeticError as error:
+        raise ValueError("invalid decimal value") from error
+
+
+def _value_from_json(data: object) -> str | Decimal | Measurement | None:
+    if data is None or isinstance(data, str):
+        return data
+    if isinstance(data, dict) and set(data) == {"decimal"}:
+        return _decimal_from_json(data["decimal"])
+    if isinstance(data, dict) and set(data) == {"measurement"}:
+        m = data["measurement"]
+        return Measurement(_decimal_from_json(m["value"]), Unit(m["unit"]))
+    raise ValueError("unrecognized typed value")
+
+
+def _guard(build, data: object, name: str):
+    if not isinstance(data, dict):
+        raise TypeError(f"{name} must be an object")
+    try:
+        return build(data)
+    except KeyError as error:
+        raise ValueError(f"{name} is missing {error.args[0]!r}") from error
+
+
+def application_to_dict(app: ApplicationData) -> dict:
+    return {
+        "application_id": app.application_id,
+        "beverage_category": app.beverage_category.value,
+        "is_imported": app.is_imported,
+        "images": [{"image_id": i.image_id, "uri": i.uri} for i in app.images],
+        "brand": app.brand,
+        "class_type": app.class_type,
+        "alcohol_content": _value_to_json(app.alcohol_content),
+        "net_contents": _value_to_json(app.net_contents),
+        "producer_name": app.producer_name,
+        "producer_address": app.producer_address,
+        "country_of_origin": app.country_of_origin,
+    }
+
+
+def application_from_dict(data: dict) -> ApplicationData:
+    def build(d: dict) -> ApplicationData:
+        measures = {}
+        for key in ("alcohol_content", "net_contents"):
+            value = _value_from_json(d.get(key))
+            if value is not None and not isinstance(value, Measurement):
+                raise ValueError(f"{key} must be a measurement")
+            measures[key] = value
+        return ApplicationData(
+            application_id=d["application_id"],
+            beverage_category=BeverageCategory(d["beverage_category"]),
+            is_imported=d["is_imported"],
+            images=tuple(ImageReference(i["image_id"], i["uri"]) for i in d["images"]),
+            brand=d.get("brand"),
+            class_type=d.get("class_type"),
+            producer_name=d.get("producer_name"),
+            producer_address=d.get("producer_address"),
+            country_of_origin=d.get("country_of_origin"),
+            **measures,
+        )
+
+    return _guard(build, data, "application")
+
+
+def _location_to_json(location: EvidenceLocation | None) -> dict | None:
+    if location is None:
+        return None
+    box = location.box
+    box_data = (
+        None
+        if box is None
+        else {
+            "left": box.left,
+            "top": box.top,
+            "right": box.right,
+            "bottom": box.bottom,
+        }
+    )
+    return {"box": box_data, "crop_ref": location.crop_ref}
+
+
+def _location_from_json(data: dict | None) -> EvidenceLocation | None:
+    if data is None:
+        return None
+    box = data.get("box")
+    if box is not None:
+        if not isinstance(box, dict):
+            raise TypeError("location.box must be an object")
+        try:
+            box = {key: box[key] for key in ("left", "top", "right", "bottom")}
+        except KeyError as error:
+            raise ValueError("location.box is missing required coordinates") from error
+    return EvidenceLocation(
+        box=None if box is None else BoundingBox(**box), crop_ref=data.get("crop_ref")
+    )
+
+
+def extracted_field_to_dict(field: ExtractedField) -> dict:
+    return {
+        "field_id": field.field_id.value,
+        "state": field.state.value,
+        "explanation": field.explanation,
+        "observations": [
+            {
+                "raw_text": o.raw_text,
+                "image_id": o.image_id,
+                "parsed_value": _value_to_json(o.parsed_value),
+                "location": _location_to_json(o.location),
+            }
+            for o in field.observations
+        ],
+    }
+
+
+def extracted_field_from_dict(data: dict) -> ExtractedField:
+    return _guard(
+        lambda d: ExtractedField(
+            field_id=FieldId(d["field_id"]),
+            state=ExtractionState(d["state"]),
+            explanation=d.get("explanation"),
+            observations=tuple(
+                Observation(
+                    raw_text=o["raw_text"],
+                    image_id=o["image_id"],
+                    parsed_value=_value_from_json(o.get("parsed_value")),
+                    location=_location_from_json(o.get("location")),
+                )
+                for o in d.get("observations", [])
+            ),
+        ),
+        data,
+        "extracted field",
+    )
+
+
+def check_result_to_dict(result: CheckResult) -> dict:
+    return {
+        "check_id": result.check_id.value,
+        "outcome": result.outcome.value,
+        "field_id": None if result.field_id is None else result.field_id.value,
+        "expected_value": _value_to_json(result.expected_value),
+        "observed_value": _value_to_json(result.observed_value),
+        "explanation": result.explanation,
+        "evidence": [
+            {
+                "field_id": e.field_id.value,
+                "observation_index": e.observation_index,
+                "image_id": e.image_id,
+            }
+            for e in result.evidence
+        ],
+    }
+
+
+def check_result_from_dict(data: dict) -> CheckResult:
+    return _guard(
+        lambda d: CheckResult(
+            check_id=CheckId(d["check_id"]),
+            outcome=CheckOutcome(d["outcome"]),
+            field_id=None if d.get("field_id") is None else FieldId(d["field_id"]),
+            expected_value=_value_from_json(d.get("expected_value")),
+            observed_value=_value_from_json(d.get("observed_value")),
+            explanation=d.get("explanation"),
+            evidence=tuple(
+                EvidenceRef(
+                    FieldId(e["field_id"]), e["observation_index"], e["image_id"]
+                )
+                for e in d.get("evidence", [])
+            ),
+        ),
+        data,
+        "check result",
+    )
+
+
+def processing_error_to_dict(error: ProcessingError) -> dict:
+    return {
+        "stage": error.stage.value,
+        "code": error.code.value,
+        "message": error.message,
+        "retryable": error.retryable,
+    }
+
+
+def processing_error_from_dict(data: dict) -> ProcessingError:
+    return _guard(
+        lambda d: ProcessingError(
+            ProcessingStage(d["stage"]),
+            ErrorCode(d["code"]),
+            d["message"],
+            d["retryable"],
+        ),
+        data,
+        "processing error",
+    )
+
+
+def review_response_to_dict(response: ReviewResponse) -> dict:
+    """Derived ``status`` and ``all_clear`` are included for readers only."""
+    return {
+        "application_id": response.application_id,
+        "check_results": [check_result_to_dict(r) for r in response.check_results],
+        "processing_errors": [
+            processing_error_to_dict(e) for e in response.processing_errors
+        ],
+        "status": response.status.value,
+        "all_clear": response.all_clear,
+    }
+
+
+def review_response_from_dict(data: dict) -> ReviewResponse:
+    """Derived keys are ignored; status is always recomputed from the data."""
+    return _guard(
+        lambda d: ReviewResponse(
+            d["application_id"],
+            tuple(check_result_from_dict(r) for r in d.get("check_results", [])),
+            tuple(
+                processing_error_from_dict(e) for e in d.get("processing_errors", [])
+            ),
+        ),
+        data,
+        "review response",
+    )
+
+
+def validate_review_evidence(
+    response: ReviewResponse,
+    application: ApplicationData,
+    extracted_fields: tuple[ExtractedField, ...] | list[ExtractedField],
+) -> None:
+    """Check that every evidence reference resolves; raise one ValueError.
+
+    Run at the boundary where the application's images and the extracted
+    observations are available. A reference must name a supplied image, an
+    extracted field, an existing observation index, and the same image as
+    that observation. All problems are listed together.
+    """
+    image_ids = {image.image_id for image in application.images}
+    fields = {f.field_id: f for f in extracted_fields}
+    problems = []
+    for result in response.check_results:
+        for ref in result.evidence:
+            label = (
+                f"{result.check_id.value} {ref.field_id.value}[{ref.observation_index}]"
+            )
+            field = fields.get(ref.field_id)
+            if ref.image_id not in image_ids:
+                problems.append(f"{label} names unsupplied image {ref.image_id!r}")
+            if field is None:
+                problems.append(f"{label} has no extracted field")
+            elif ref.observation_index >= len(field.observations):
+                problems.append(f"{label} has no such observation")
+            elif field.observations[ref.observation_index].image_id != ref.image_id:
+                problems.append(f"{label} image differs from the observation's image")
+    if problems:
+        raise ValueError("unresolved evidence references: " + "; ".join(problems))

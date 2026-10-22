@@ -132,7 +132,7 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 | `field_id` is required for the seven comparison checks, optional for warning checks, and must match the check's field (`warning_text` for warning checks). | Choosing `needs_review`, `not_evaluated` or `discrepancy` from extraction state (missing, uncertain, conflicting or insufficient evidence). |
 | Every outcome except `match` needs a non-blank explanation (so `not_applicable`, `not_evaluated` and `needs_review` always say why). | Applicability rules, such as country of origin only for imports. |
 | `discrepancy` needs at least one evidence reference; all references use the check's field. | Whether `match` or unresolved results carry supporting evidence. |
-| Expected and observed values have supported types; evidence items are `EvidenceRef`. | Whether a reference's index and image ID resolve to a real observation and supplied image (a later boundary check). |
+| Expected and observed values have supported types; evidence items are `EvidenceRef`. | Whether a reference resolves is checked by `validate_review_evidence` at the response boundary, not in the constructor. |
 | Evidence order is preserved as an immutable tuple. | Aggregate rules; see `ReviewResponse`. |
 
 `ProcessingError` and `ReviewResponse` keep execution failures apart from label findings. Decisions:
@@ -148,6 +148,14 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 | Unique check IDs; correct item types; immutable tuples. | Deciding which checks are relevant and when `not_applicable` is legitimate. |
 | Derived `status` and `all_clear` rules. | Writing safe messages; the schema cannot prove a message is free of sensitive detail. |
 | Timeouts, blocked endpoints and invalid responses are `ProcessingError` codes, never outcomes. | Retry policy and resolving evidence references. |
+
+Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`. Decisions:
+
+- Hand-written `*_to_dict` / `*_from_dict` functions for `ApplicationData`, `ExtractedField`, `CheckResult`, `ProcessingError` and `ReviewResponse`; standard library only, no new dependency. Output is JSON-compatible: enums are their string values, tuples are lists, `raw_text` is kept verbatim, and `Decimal` is a string. Typed values are tagged (`{"decimal": "45.0"}`, `{"measurement": {"value": "750", "unit": "ml"}}`; plain strings stay strings), so `str`, `Decimal` and `Measurement` survive a round trip, including trailing zeros.
+- Deserialization goes through the same constructors, so every schema rule applies to input. Missing keys and unknown enum values raise `ValueError`; a non-object or non-string decimal raises `TypeError`.
+- `ReviewResponse` output includes derived `status` and `all_clear` for readers. They are ignored on input and always recomputed, so a payload cannot claim all-clear.
+- `validate_review_evidence(response, application, extracted_fields)` is the response-boundary check that `EvidenceRef` deferred. It raises one `ValueError` listing every reference that names an unsupplied image, a field with no extraction, an out-of-range observation index, or an image different from the observation's.
+- Contract examples live as builders in `tests/test_schemas.py`: match, missing expected value, unknown extraction (uncertain and missing), conflicting observations, and provider timeout. Tests round-trip them through `json` and run offline with no extraction credentials. They validate contracts only, not live extraction or hosted performance.
 
 #### Shared identifiers and states
 
