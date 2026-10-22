@@ -554,6 +554,13 @@ def _location_from_json(data: dict | None) -> EvidenceLocation | None:
     if data is None:
         return None
     box = data.get("box")
+    if box is not None:
+        if not isinstance(box, dict):
+            raise TypeError("location.box must be an object")
+        try:
+            box = {key: box[key] for key in ("left", "top", "right", "bottom")}
+        except KeyError as error:
+            raise ValueError("location.box is missing required coordinates") from error
     return EvidenceLocation(
         box=None if box is None else BoundingBox(**box), crop_ref=data.get("crop_ref")
     )
