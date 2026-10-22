@@ -3,12 +3,14 @@ from decimal import Decimal
 import pytest
 
 from alcohol_label.schemas import (
+    _CHECK_FIELD,
     ApplicationData,
     BeverageCategory,
     BoundingBox,
     CheckId,
     CheckOutcome,
     CheckResult,
+    ErrorCode,
     EvidenceLocation,
     EvidenceRef,
     ExtractedField,
@@ -17,6 +19,10 @@ from alcohol_label.schemas import (
     ImageReference,
     Measurement,
     Observation,
+    ProcessingError,
+    ProcessingStage,
+    ReviewResponse,
+    ReviewStatus,
     Unit,
 )
 
@@ -358,6 +364,7 @@ def test_check_result_rejects_inconsistent_records(kwargs):
             CheckId.BRAND, CheckOutcome.MATCH, FieldId.BRAND, evidence=("img-1",)
         ),
         lambda: EvidenceRef("brand", 0, "img-1"),
+        lambda: EvidenceRef(FieldId.BRAND, True, "img-1"),
         lambda: ExtractedField(FieldId.BRAND, "observed", (Observation("a", "i"),)),
     ],
 )
@@ -370,10 +377,131 @@ def test_wrong_types_raise_type_error(build):
     "build",
     [
         lambda: EvidenceRef(FieldId.BRAND, -1, "img-1"),
-        lambda: EvidenceRef(FieldId.BRAND, True, "img-1"),
         lambda: EvidenceRef(FieldId.BRAND, 0, " "),
     ],
 )
 def test_invalid_evidence_refs_are_rejected(build):
     with pytest.raises(ValueError):
         build()
+
+
+def _error(code=ErrorCode.PROVIDER_TIMEOUT, retryable=True):
+    return ProcessingError(
+        ProcessingStage.EXTRACTION, code, "Extraction did not finish.", retryable
+    )
+
+
+def _check_field(check):
+    return _CHECK_FIELD[check]
+
+
+def _result(check, outcome=CheckOutcome.MATCH):
+    explanation = None if outcome is CheckOutcome.MATCH else "Reason recorded."
+    evidence = ()
+    if outcome is CheckOutcome.DISCREPANCY:
+        evidence = (EvidenceRef(_check_field(check), 0, "img-1"),)
+    return CheckResult(
+        check,
+        outcome,
+        field_id=_check_field(check),
+        explanation=explanation,
+        evidence=evidence,
+    )
+
+
+def _all_results():
+    return tuple(_result(c) for c in CheckId)
+
+
+def test_error_codes_and_stages_are_not_outcomes_or_states():
+    labels = {o.value for o in CheckOutcome} | {s.value for s in ExtractionState}
+    failure_labels = {c.value for c in ErrorCode} | {s.value for s in ProcessingStage}
+    assert not labels & failure_labels
+    assert {
+        "provider_timeout",
+        "endpoint_blocked",
+        "invalid_provider_response",
+    } <= {c.value for c in ErrorCode}
+
+
+def test_processing_error_records_failures_without_diagnostics_field():
+    blocked = _error(ErrorCode.ENDPOINT_BLOCKED, retryable=False)
+
+    assert blocked.retryable is False
+    assert _error().retryable is True
+    assert set(ProcessingError.__slots__) == {"stage", "code", "message", "retryable"}
+
+
+def test_processing_error_rejects_blank_message_and_wrong_types():
+    with pytest.raises(ValueError):
+        ProcessingError(ProcessingStage.EXTRACTION, ErrorCode.INTERNAL_ERROR, " ", True)
+    for args in (
+        ("extraction", ErrorCode.INTERNAL_ERROR, "m", True),
+        (ProcessingStage.EXTRACTION, "internal_error", "m", True),
+        (ProcessingStage.EXTRACTION, ErrorCode.INTERNAL_ERROR, None, True),
+        (ProcessingStage.EXTRACTION, ErrorCode.INTERNAL_ERROR, "m", 1),
+    ):
+        with pytest.raises(TypeError):
+            ProcessingError(*args)
+    with pytest.raises(TypeError):
+        ProcessingError(ProcessingStage.EXTRACTION, ErrorCode.INTERNAL_ERROR, "m")
+
+
+def test_review_response_keeps_partial_results_and_errors_separate():
+    partial = [_result(CheckId.BRAND)]
+    errors = [_error()]
+    response = ReviewResponse("app-001", partial, errors)
+
+    assert response.check_results == tuple(partial)
+    assert response.processing_errors == tuple(errors)
+    assert response.status is ReviewStatus.INCOMPLETE
+    assert response.all_clear is False
+
+
+def test_complete_clear_review_is_all_clear_and_not_applicable_is_clear():
+    response = ReviewResponse("app-001", _all_results())
+    assert response.status is ReviewStatus.COMPLETE
+    assert response.all_clear is True
+
+    domestic = tuple(
+        _result(c, CheckOutcome.NOT_APPLICABLE)
+        if c is CheckId.COUNTRY_OF_ORIGIN
+        else _result(c)
+        for c in CheckId
+    )
+    assert ReviewResponse("app-001", domestic).all_clear is True
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [CheckOutcome.DISCREPANCY, CheckOutcome.NEEDS_REVIEW, CheckOutcome.NOT_EVALUATED],
+)
+def test_unresolved_or_failed_checks_block_all_clear_but_stay_visible(outcome):
+    results = (_result(CheckId.BRAND, outcome),) + tuple(
+        _result(c) for c in CheckId if c is not CheckId.BRAND
+    )
+    response = ReviewResponse("app-001", results)
+
+    assert response.status is ReviewStatus.COMPLETE
+    assert response.all_clear is False
+    assert response.check_results[0].outcome is outcome
+
+
+def test_processing_error_or_missing_check_blocks_all_clear():
+    assert ReviewResponse("app-001", _all_results(), (_error(),)).all_clear is False
+    assert ReviewResponse("app-001", _all_results()[:-1]).all_clear is False
+    empty = ReviewResponse("app-001")
+    assert empty.status is ReviewStatus.INCOMPLETE
+    assert empty.all_clear is False
+
+
+def test_review_response_rejects_invalid_structure():
+    brand = _result(CheckId.BRAND)
+    with pytest.raises(ValueError):
+        ReviewResponse(" ")
+    with pytest.raises(ValueError):
+        ReviewResponse("app-001", (brand, brand))
+    with pytest.raises(TypeError):
+        ReviewResponse("app-001", ("brand",))
+    with pytest.raises(TypeError):
+        ReviewResponse("app-001", (), ("timeout",))

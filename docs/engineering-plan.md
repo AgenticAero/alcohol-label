@@ -133,7 +133,21 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 | Every outcome except `match` needs a non-blank explanation (so `not_applicable`, `not_evaluated` and `needs_review` always say why). | Applicability rules, such as country of origin only for imports. |
 | `discrepancy` needs at least one evidence reference; all references use the check's field. | Whether `match` or unresolved results carry supporting evidence. |
 | Expected and observed values have supported types; evidence items are `EvidenceRef`. | Whether a reference's index and image ID resolve to a real observation and supplied image (a later boundary check). |
-| Evidence order is preserved as an immutable tuple. | Aggregate "all supported checks passed" rules and processing errors (separate contract). |
+| Evidence order is preserved as an immutable tuple. | Aggregate rules; see `ReviewResponse`. |
+
+`ProcessingError` and `ReviewResponse` keep execution failures apart from label findings. Decisions:
+
+- `ProcessingError(stage, code, message, retryable)`. `ProcessingStage` is `input_validation`, `image_decoding`, `extraction` or `comparison`. `ErrorCode` is `provider_timeout`, `endpoint_blocked`, `rate_limited`, `invalid_provider_response`, `image_unreadable` or `internal_error`. `retryable` is required. There is no free-form diagnostics field; provider detail, URLs, stack traces and credentials stay in server-side logs.
+- `ReviewResponse(application_id, check_results, processing_errors)` holds both lists separately. Partial check results are kept when another step fails. Each check may appear once.
+- `status` is derived: `complete` only with no processing errors and a result for all 11 checks; otherwise `incomplete` (including an empty response). `all_clear` is true only for a `complete` review whose outcomes are all `match` or `not_applicable`. `discrepancy`, `needs_review` and `not_evaluated` each block it and stay visible. Nothing is stored, so flags cannot disagree with the data.
+- A later `VerificationResult` (summary, scope, versions, timings) will wrap or extend `ReviewResponse`.
+
+| Enforced by schema validation | Left to comparison / service logic |
+| --- | --- |
+| Valid stage and code enums, required boolean `retryable`, non-blank message and application ID. | Mapping provider exceptions to stages and codes. |
+| Unique check IDs; correct item types; immutable tuples. | Deciding which checks are relevant and when `not_applicable` is legitimate. |
+| Derived `status` and `all_clear` rules. | Writing safe messages; the schema cannot prove a message is free of sensitive detail. |
+| Timeouts, blocked endpoints and invalid responses are `ProcessingError` codes, never outcomes. | Retry policy and resolving evidence references. |
 
 #### Shared identifiers and states
 
@@ -162,7 +176,7 @@ These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label
 | `not_applicable` | A documented applicability rule excludes the check. |
 | `not_evaluated` | A relevant check was not performed or lacks required input. |
 
-Processing failures, such as a timeout or invalid provider response, are neither extraction states nor check outcomes. They use a separate error contract defined in a later subtask.
+Processing failures, such as a timeout or invalid provider response, are neither extraction states nor check outcomes. They use the `ProcessingError` contract above.
 
 ### Results policy
 
@@ -174,7 +188,7 @@ Processing failures, such as a timeout or invalid provider response, are neither
 | Not applicable | A documented applicability rule excludes this check. |
 | Not evaluated | A relevant check is unsupported or lacks required input; it cannot count as a pass. |
 
-Represent a processing error separately from a labeling result. The aggregate cannot report all supported checks passed if a relevant check is unresolved, not evaluated, or failed. Keep known discrepancies visible even when other checks need review.
+Represent a processing error separately from a labeling result. `ReviewResponse.all_clear` implements this: the aggregate cannot report all supported checks passed if a relevant check is unresolved, not evaluated, or failed. Keep known discrepancies visible even when other checks need review.
 
 ### Field-specific comparison policies
 

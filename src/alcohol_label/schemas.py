@@ -290,7 +290,7 @@ class EvidenceRef:
     def __post_init__(self) -> None:
         if not isinstance(self.field_id, FieldId):
             raise TypeError("field_id must be a FieldId")
-if not isinstance(self.observation_index, int) or isinstance(
+        if not isinstance(self.observation_index, int) or isinstance(
             self.observation_index, bool
         ):
             raise TypeError("observation_index must be an integer")
@@ -345,3 +345,107 @@ class CheckResult:
             raise ValueError(f"{self.outcome.value} requires an explanation")
         if self.outcome is CheckOutcome.DISCREPANCY and not self.evidence:
             raise ValueError("discrepancy requires evidence")
+
+
+class ProcessingStage(StrEnum):
+    """Pipeline stage in which a processing failure occurred."""
+
+    INPUT_VALIDATION = "input_validation"
+    IMAGE_DECODING = "image_decoding"
+    EXTRACTION = "extraction"
+    COMPARISON = "comparison"
+
+
+class ErrorCode(StrEnum):
+    """Stable identifiers for processing failures; never label findings."""
+
+    PROVIDER_TIMEOUT = "provider_timeout"
+    ENDPOINT_BLOCKED = "endpoint_blocked"
+    RATE_LIMITED = "rate_limited"
+    INVALID_PROVIDER_RESPONSE = "invalid_provider_response"
+    IMAGE_UNREADABLE = "image_unreadable"
+    INTERNAL_ERROR = "internal_error"
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessingError:
+    """An execution failure, kept apart from check outcomes.
+
+    ``message`` is user-facing. There is deliberately no diagnostics field:
+    provider detail, URLs, stack traces and credentials belong in server-side
+    logs. The schema cannot prove a message is safe; its author must ensure it.
+    """
+
+    stage: ProcessingStage
+    code: ErrorCode
+    message: str
+    retryable: bool
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.stage, ProcessingStage):
+            raise TypeError("stage must be a ProcessingStage")
+        if not isinstance(self.code, ErrorCode):
+            raise TypeError("code must be an ErrorCode")
+        if not isinstance(self.message, str):
+            raise TypeError("message must be a string")
+        if not isinstance(self.retryable, bool):
+            raise TypeError("retryable must be a bool")
+        if not self.message.strip():
+            raise ValueError("message must not be blank")
+
+
+class ReviewStatus(StrEnum):
+    """Whether a review produced a result for every check without failures."""
+
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"
+
+
+_CLEAR_OUTCOMES = frozenset({CheckOutcome.MATCH, CheckOutcome.NOT_APPLICABLE})
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewResponse:
+    """Check results and processing errors for one application, kept separate.
+
+    Partial check results may accompany processing errors. Status and
+    all-clear are derived so they cannot disagree with the data. A later
+    ``VerificationResult`` (summary, scope, versions, timings) will wrap or
+    extend this record.
+    """
+
+    application_id: str
+    check_results: tuple[CheckResult, ...] = ()
+    processing_errors: tuple[ProcessingError, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "check_results", tuple(self.check_results))
+        object.__setattr__(self, "processing_errors", tuple(self.processing_errors))
+        if not isinstance(self.application_id, str):
+            raise TypeError("application_id must be a string")
+        if not self.application_id.strip():
+            raise ValueError("application_id must not be blank")
+        for result in self.check_results:
+            if not isinstance(result, CheckResult):
+                raise TypeError("check_results must contain CheckResult items")
+        for error in self.processing_errors:
+            if not isinstance(error, ProcessingError):
+                raise TypeError("processing_errors must contain ProcessingError items")
+        check_ids = [r.check_id for r in self.check_results]
+        if len(set(check_ids)) != len(check_ids):
+            raise ValueError("each check may have only one result")
+
+    @property
+    def status(self) -> ReviewStatus:
+        """Complete only without processing errors and with every check present."""
+        has_all_checks = {r.check_id for r in self.check_results} == set(CheckId)
+        if not self.processing_errors and has_all_checks:
+            return ReviewStatus.COMPLETE
+        return ReviewStatus.INCOMPLETE
+
+    @property
+    def all_clear(self) -> bool:
+        """True only for a complete review where every outcome is clear."""
+        return self.status is ReviewStatus.COMPLETE and all(
+            r.outcome in _CLEAR_OUTCOMES for r in self.check_results
+        )

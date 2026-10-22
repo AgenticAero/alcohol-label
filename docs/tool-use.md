@@ -70,6 +70,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks performed:** `poetry run pytest` (54 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
 - **Pending checks / limitations:** No live extraction, UI or performance testing; evidence references are not resolved against real observations or images yet.
 
+### 2026-10-23 — AL-27 processing errors and review response
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Define processing errors and a review response that cannot look all-clear when incomplete or failed.
+- **Inputs:** AL-27 acceptance criteria from Jira, existing schemas, Data contracts section; developer chose stages, codes, derived status and all-clear rules.
+- **Output used:** `ProcessingStage`, `ErrorCode`, `ProcessingError`, `ReviewStatus`, `ReviewResponse`, schema tests, Data contracts documentation. Also fixed an indentation error in `EvidenceRef` and a misplaced bool-index test case on `main`, both of which blocked test collection.
+- **Human review / changes:** Diff pending developer review.
+- **Checks performed:** `poetry run pytest` (64 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
+- **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing. Message safety is the producer's responsibility.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
