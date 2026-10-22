@@ -240,7 +240,7 @@ class ExtractedField:
     def __post_init__(self) -> None:
         object.__setattr__(self, "observations", tuple(self.observations))
         if not isinstance(self.state, ExtractionState):
-            raise ValueError("state must be an ExtractionState")
+            raise TypeError("state must be an ExtractionState")
         count = len(self.observations)
         if self.state is ExtractionState.OBSERVED and count != 1:
             raise ValueError("observed requires exactly one observation")
@@ -254,3 +254,94 @@ class ExtractedField:
             self.explanation and self.explanation.strip()
         ):
             raise ValueError(f"{self.state.value} requires an explanation")
+
+
+_CHECK_FIELD: dict[CheckId, FieldId] = {
+    CheckId.BRAND: FieldId.BRAND,
+    CheckId.CLASS_TYPE: FieldId.CLASS_TYPE,
+    CheckId.ALCOHOL_CONTENT: FieldId.ALCOHOL_CONTENT,
+    CheckId.NET_CONTENTS: FieldId.NET_CONTENTS,
+    CheckId.PRODUCER_NAME: FieldId.PRODUCER_NAME,
+    CheckId.PRODUCER_ADDRESS: FieldId.PRODUCER_ADDRESS,
+    CheckId.COUNTRY_OF_ORIGIN: FieldId.COUNTRY_OF_ORIGIN,
+    CheckId.WARNING_WORDING: FieldId.WARNING_TEXT,
+    CheckId.WARNING_HEADING_CASE: FieldId.WARNING_TEXT,
+    CheckId.WARNING_HEADING_BOLD: FieldId.WARNING_TEXT,
+    CheckId.WARNING_BODY_NOT_BOLD: FieldId.WARNING_TEXT,
+}
+
+_WARNING_CHECKS = frozenset(c for c in CheckId if c.value.startswith("warning_"))
+
+_CheckValue = str | Decimal | Measurement | None
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRef:
+    """Link to one observation supporting a check.
+
+    Points at ``ExtractedField.observations[observation_index]`` for
+    ``field_id``; ``image_id`` names the source image of that observation.
+    """
+
+    field_id: FieldId
+    observation_index: int
+    image_id: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.field_id, FieldId):
+            raise TypeError("field_id must be a FieldId")
+if not isinstance(self.observation_index, int) or isinstance(
+            self.observation_index, bool
+        ):
+            raise TypeError("observation_index must be an integer")
+        if self.observation_index < 0:
+            raise ValueError("observation_index must be a non-negative integer")
+        if not self.image_id.strip():
+            raise ValueError("image_id must not be blank")
+
+
+@dataclass(frozen=True, slots=True)
+class CheckResult:
+    """Outcome of one check; records a result, performs no comparison.
+
+    Schema validation enforces structure only. Whether the outcome is the right
+    one for the expected and observed values, and whether evidence references
+    resolve to real observations and images, belong to comparison logic.
+    """
+
+    check_id: CheckId
+    outcome: CheckOutcome
+    field_id: FieldId | None = None
+    expected_value: _CheckValue = None
+    observed_value: _CheckValue = None
+    explanation: str | None = None
+    evidence: tuple[EvidenceRef, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+        if not isinstance(self.check_id, CheckId):
+            raise TypeError("check_id must be a CheckId")
+        if not isinstance(self.outcome, CheckOutcome):
+            raise TypeError("outcome must be a CheckOutcome")
+        expected_field = _CHECK_FIELD[self.check_id]
+        if self.field_id is None:
+            if self.check_id not in _WARNING_CHECKS:
+                raise ValueError(f"{self.check_id.value} requires a field_id")
+        elif self.field_id is not expected_field:
+            raise ValueError(
+                f"{self.check_id.value} must use field {expected_field.value}"
+            )
+        for value in (self.expected_value, self.observed_value):
+            if value is not None and not isinstance(value, (str, Decimal, Measurement)):
+                raise ValueError("values must be str, Decimal, Measurement, or None")
+        for ref in self.evidence:
+            if not isinstance(ref, EvidenceRef):
+                raise TypeError("evidence must contain EvidenceRef items")
+            if ref.field_id is not expected_field:
+                raise ValueError("evidence must reference the check's field")
+        if self.outcome is not CheckOutcome.MATCH and not (
+            self.explanation and self.explanation.strip()
+        ):
+            raise ValueError(f"{self.outcome.value} requires an explanation")
+        if self.outcome is CheckOutcome.DISCREPANCY and not self.evidence:
+            raise ValueError("discrepancy requires evidence")
