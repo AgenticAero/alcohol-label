@@ -8,7 +8,9 @@ from alcohol_label.schemas import (
     BoundingBox,
     CheckId,
     CheckOutcome,
+    CheckResult,
     EvidenceLocation,
+    EvidenceRef,
     ExtractedField,
     ExtractionState,
     FieldId,
@@ -153,7 +155,9 @@ def test_extracted_field_copies_observations_to_immutable_tuple():
     observation = Observation("45% Alc./Vol.", "img-1")
     observations = [observation]
 
-    field = ExtractedField(FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, observations)
+    field = ExtractedField(
+        FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, observations
+    )
     observations.clear()
 
     assert field.observations == (observation,)
@@ -231,5 +235,145 @@ def test_extracted_field_state_rules_reject_inconsistent_records(
     ],
 )
 def test_invalid_evidence_structures_are_rejected(build):
+    with pytest.raises(ValueError):
+        build()
+
+
+def _ref(field_id=FieldId.BRAND, index=0, image_id="img-1"):
+    return EvidenceRef(field_id, index, image_id)
+
+
+def test_match_needs_no_explanation_and_keeps_values_and_evidence_order():
+    refs = [_ref(), _ref(index=1, image_id="img-2")]
+    result = CheckResult(
+        CheckId.BRAND,
+        CheckOutcome.MATCH,
+        FieldId.BRAND,
+        expected_value="Old Tom",
+        observed_value="OLD TOM",
+        evidence=refs,
+    )
+
+    assert result.explanation is None
+    assert result.evidence == tuple(refs)
+    assert [r.image_id for r in result.evidence] == ["img-1", "img-2"]
+
+
+def test_discrepancy_with_evidence_and_unresolved_outcomes_with_reasons():
+    CheckResult(
+        CheckId.ALCOHOL_CONTENT,
+        CheckOutcome.DISCREPANCY,
+        FieldId.ALCOHOL_CONTENT,
+        Measurement(Decimal(45), Unit.PERCENT_ABV),
+        Measurement(Decimal(40), Unit.PERCENT_ABV),
+        "Printed 40% differs from 45%.",
+        (_ref(FieldId.ALCOHOL_CONTENT),),
+    )
+    for outcome in (
+        CheckOutcome.NEEDS_REVIEW,
+        CheckOutcome.NOT_APPLICABLE,
+        CheckOutcome.NOT_EVALUATED,
+    ):
+        result = CheckResult(
+            CheckId.COUNTRY_OF_ORIGIN,
+            outcome,
+            FieldId.COUNTRY_OF_ORIGIN,
+            explanation="Reason recorded.",
+        )
+        assert result.observed_value is None
+
+
+def test_warning_checks_are_separate_results_on_the_warning_field():
+    results = [
+        CheckResult(
+            check,
+            CheckOutcome.NOT_EVALUATED,
+            explanation="Style evidence unavailable.",
+        )
+        for check in CheckId
+        if check.value.startswith("warning_")
+    ]
+
+    assert len({r.check_id for r in results}) == 4
+    assert CheckResult(
+        CheckId.WARNING_HEADING_BOLD,
+        CheckOutcome.NEEDS_REVIEW,
+        FieldId.WARNING_TEXT,
+        explanation="Weight uncertain.",
+        evidence=(_ref(FieldId.WARNING_TEXT),),
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"check_id": CheckId.BRAND, "outcome": CheckOutcome.NEEDS_REVIEW},
+        {
+            "check_id": CheckId.BRAND,
+            "outcome": CheckOutcome.NOT_EVALUATED,
+            "explanation": " ",
+        },
+        {
+            "check_id": CheckId.BRAND,
+            "outcome": CheckOutcome.DISCREPANCY,
+            "explanation": "Differs.",
+        },
+        {"check_id": CheckId.BRAND, "outcome": CheckOutcome.MATCH},
+        {
+            "check_id": CheckId.BRAND,
+            "outcome": CheckOutcome.MATCH,
+            "field_id": FieldId.CLASS_TYPE,
+        },
+        {
+            "check_id": CheckId.WARNING_WORDING,
+            "outcome": CheckOutcome.MATCH,
+            "field_id": FieldId.BRAND,
+        },
+        {
+            "check_id": CheckId.BRAND,
+            "outcome": CheckOutcome.MATCH,
+            "field_id": FieldId.BRAND,
+            "evidence": (_ref(FieldId.CLASS_TYPE),),
+        },
+        {
+            "check_id": CheckId.BRAND,
+            "outcome": CheckOutcome.MATCH,
+            "field_id": FieldId.BRAND,
+            "observed_value": 45.0,
+        },
+    ],
+)
+def test_check_result_rejects_inconsistent_records(kwargs):
+    kwargs.setdefault("field_id", None)
+    with pytest.raises(ValueError):
+        CheckResult(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: CheckResult("brand", CheckOutcome.MATCH, FieldId.BRAND),
+        lambda: CheckResult(CheckId.BRAND, "match", FieldId.BRAND),
+        lambda: CheckResult(
+            CheckId.BRAND, CheckOutcome.MATCH, FieldId.BRAND, evidence=("img-1",)
+        ),
+        lambda: EvidenceRef("brand", 0, "img-1"),
+        lambda: ExtractedField(FieldId.BRAND, "observed", (Observation("a", "i"),)),
+    ],
+)
+def test_wrong_types_raise_type_error(build):
+    with pytest.raises(TypeError):
+        build()
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: EvidenceRef(FieldId.BRAND, -1, "img-1"),
+        lambda: EvidenceRef(FieldId.BRAND, True, "img-1"),
+        lambda: EvidenceRef(FieldId.BRAND, 0, " "),
+    ],
+)
+def test_invalid_evidence_refs_are_rejected(build):
     with pytest.raises(ValueError):
         build()

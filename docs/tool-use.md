@@ -60,6 +60,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks performed:** `poetry run pytest` (34 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
 - **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
 
+### 2026-10-22 — AL-26 CheckResult structure
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Define the check outcome record and document schema versus comparison-logic invariants.
+- **Inputs:** AL-26 acceptance criteria from Jira, existing schemas, Data contracts section; developer chose index-based evidence references, value types, field rules, explanation and discrepancy-evidence requirements.
+- **Output used:** `EvidenceRef`, `CheckResult`, schema tests, Data contracts documentation. Also fixed one existing Ruff TRY004 finding and one unformatted test line left by the AL-25 follow-up so repository checks pass.
+- **Human review / changes:** Diff pending developer review.
+- **Checks performed:** `poetry run pytest` (54 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
+- **Pending checks / limitations:** No live extraction, UI or performance testing; evidence references are not resolved against real observations or images yet.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.

@@ -120,6 +120,21 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 - State rules: `observed` has exactly one observation; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
 - Boldness observations remain a separate later structure; a warning transcription cannot establish font weight.
 
+`CheckResult` records one check outcome; it neither extracts nor compares. Decisions:
+
+- `CheckResult(check_id, outcome, field_id, expected_value, observed_value, explanation, evidence)`. Values are `str | Decimal | Measurement | None`, like `Observation.parsed_value`. The four warning checks are separate results, each relating to `warning_text`; boldness checks cannot be established by transcription alone.
+- `EvidenceRef(field_id, observation_index, image_id)` links a result to `ExtractedField.observations[observation_index]` and its source image. `Observation` has no ID of its own, so the link is by position, which is stable because observations are an immutable tuple.
+- Wrong-typed arguments raise `TypeError`; structural rule violations raise `ValueError`.
+
+| Enforced by schema validation | Left to comparison logic |
+| --- | --- |
+| `check_id` and `outcome` are the shared enums. | Whether expected and observed values really match or differ for the chosen outcome. |
+| `field_id` is required for the seven comparison checks, optional for warning checks, and must match the check's field (`warning_text` for warning checks). | Choosing `needs_review`, `not_evaluated` or `discrepancy` from extraction state (missing, uncertain, conflicting or insufficient evidence). |
+| Every outcome except `match` needs a non-blank explanation (so `not_applicable`, `not_evaluated` and `needs_review` always say why). | Applicability rules, such as country of origin only for imports. |
+| `discrepancy` needs at least one evidence reference; all references use the check's field. | Whether `match` or unresolved results carry supporting evidence. |
+| Expected and observed values have supported types; evidence items are `EvidenceRef`. | Whether a reference's index and image ID resolve to a real observation and supplied image (a later boundary check). |
+| Evidence order is preserved as an immutable tuple. | Aggregate "all supported checks passed" rules and processing errors (separate contract). |
+
 #### Shared identifiers and states
 
 These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label/schemas.py`.
