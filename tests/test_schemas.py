@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 import pytest
@@ -24,6 +25,15 @@ from alcohol_label.schemas import (
     ReviewResponse,
     ReviewStatus,
     Unit,
+    application_from_dict,
+    application_to_dict,
+    check_result_from_dict,
+    check_result_to_dict,
+    extracted_field_from_dict,
+    extracted_field_to_dict,
+    review_response_from_dict,
+    review_response_to_dict,
+    validate_review_evidence,
 )
 
 
@@ -505,3 +515,341 @@ def test_review_response_rejects_invalid_structure():
         ReviewResponse("app-001", ("brand",))
     with pytest.raises(TypeError):
         ReviewResponse("app-001", (), ("timeout",))
+
+
+# Contract examples: each scenario returns (application, extracted fields, response).
+
+
+def _fill(results):
+    """Complete a partial result list with plain matches for the other checks."""
+    given = {r.check_id for r in results}
+    return tuple(results) + tuple(_result(c) for c in CheckId if c not in given)
+
+
+def _example_match():
+    app = _complete(images=_images("front"))
+    brand = ExtractedField(
+        FieldId.BRAND,
+        ExtractionState.OBSERVED,
+        (
+            Observation(
+                "OLD  TOM\u00ae",
+                "front",
+                parsed_value="OLD TOM",
+                location=EvidenceLocation(BoundingBox(0.1, 0.2, 0.6, 0.3)),
+            ),
+        ),
+    )
+    abv = ExtractedField(
+        FieldId.ALCOHOL_CONTENT,
+        ExtractionState.OBSERVED,
+        (Observation("45.0% Alc./Vol.", "front", parsed_value=Decimal("45.0")),),
+    )
+    results = [
+        CheckResult(
+            CheckId.BRAND,
+            CheckOutcome.MATCH,
+            FieldId.BRAND,
+            expected_value="Old Tom",
+            observed_value="OLD TOM",
+            evidence=(EvidenceRef(FieldId.BRAND, 0, "front"),),
+        ),
+        CheckResult(
+            CheckId.ALCOHOL_CONTENT,
+            CheckOutcome.MATCH,
+            FieldId.ALCOHOL_CONTENT,
+            expected_value=Measurement(Decimal("45.0"), Unit.PERCENT_ABV),
+            observed_value=Decimal("45.0"),
+            evidence=(EvidenceRef(FieldId.ALCOHOL_CONTENT, 0, "front"),),
+        ),
+    ]
+    return app, (brand, abv), ReviewResponse("app-001", _fill(results))
+
+
+def _example_missing_expected_value():
+    app = _complete(brand=None)
+    brand = ExtractedField(
+        FieldId.BRAND,
+        ExtractionState.OBSERVED,
+        (Observation("OLD TOM", "front"),),
+    )
+    result = CheckResult(
+        CheckId.BRAND,
+        CheckOutcome.NOT_EVALUATED,
+        FieldId.BRAND,
+        observed_value="OLD TOM",
+        explanation="No expected brand was supplied.",
+    )
+    return app, (brand,), ReviewResponse("app-001", _fill([result]))
+
+
+def _example_unknown_extraction():
+    app = _complete()
+    abv = ExtractedField(
+        FieldId.ALCOHOL_CONTENT,
+        ExtractionState.UNCERTAIN,
+        (Observation("4?.0% Alc./Vol.", "front"),),
+        explanation="Digit obscured by glare.",
+    )
+    net = ExtractedField(
+        FieldId.NET_CONTENTS,
+        ExtractionState.MISSING,
+        explanation="No net contents statement found in the supplied images.",
+    )
+    results = [
+        CheckResult(
+            CheckId.ALCOHOL_CONTENT,
+            CheckOutcome.NEEDS_REVIEW,
+            FieldId.ALCOHOL_CONTENT,
+            explanation="Reading is uncertain.",
+        ),
+        CheckResult(
+            CheckId.NET_CONTENTS,
+            CheckOutcome.NEEDS_REVIEW,
+            FieldId.NET_CONTENTS,
+            explanation="Not found in the supplied images; not proof of absence.",
+        ),
+    ]
+    return app, (abv, net), ReviewResponse("app-001", _fill(results))
+
+
+def _example_conflicting_observations():
+    app = _complete(images=_images("front", "back"))
+    class_type = ExtractedField(
+        FieldId.CLASS_TYPE,
+        ExtractionState.CONFLICTING,
+        (
+            Observation("Straight Bourbon Whiskey", "front"),
+            Observation("Kentucky Bourbon", "back"),
+        ),
+        explanation="Front and back differ.",
+    )
+    result = CheckResult(
+        CheckId.CLASS_TYPE,
+        CheckOutcome.NEEDS_REVIEW,
+        FieldId.CLASS_TYPE,
+        expected_value="Straight Bourbon Whiskey",
+        explanation="Observations conflict; none was selected.",
+        evidence=(
+            EvidenceRef(FieldId.CLASS_TYPE, 0, "front"),
+            EvidenceRef(FieldId.CLASS_TYPE, 1, "back"),
+        ),
+    )
+    return app, (class_type,), ReviewResponse("app-001", _fill([result]))
+
+
+def _example_provider_timeout():
+    app = _complete()
+    brand = ExtractedField(
+        FieldId.BRAND, ExtractionState.OBSERVED, (Observation("OLD TOM", "front"),)
+    )
+    partial = [
+        CheckResult(
+            CheckId.BRAND,
+            CheckOutcome.MATCH,
+            FieldId.BRAND,
+            evidence=(EvidenceRef(FieldId.BRAND, 0, "front"),),
+        )
+    ]
+    response = ReviewResponse(
+        "app-001",
+        partial,
+        [
+            ProcessingError(
+                ProcessingStage.EXTRACTION,
+                ErrorCode.PROVIDER_TIMEOUT,
+                "Extraction timed out. Try again.",
+                True,
+            )
+        ],
+    )
+    return app, (brand,), response
+
+
+_EXAMPLES = [
+    _example_match,
+    _example_missing_expected_value,
+    _example_unknown_extraction,
+    _example_conflicting_observations,
+    _example_provider_timeout,
+]
+
+
+def _through_json(data):
+    return json.loads(json.dumps(data))
+
+
+@pytest.mark.parametrize("example", _EXAMPLES)
+def test_examples_round_trip_through_json_and_resolve_evidence(example):
+    app, fields, response = example()
+
+    assert application_from_dict(_through_json(application_to_dict(app))) == app
+    for field in fields:
+        assert (
+            extracted_field_from_dict(_through_json(extracted_field_to_dict(field)))
+            == field
+        )
+    restored = review_response_from_dict(
+        _through_json(review_response_to_dict(response))
+    )
+    assert restored == response
+    assert restored.status is response.status
+    validate_review_evidence(restored, app, fields)
+
+
+def test_examples_have_expected_review_semantics():
+    match = _example_match()[2]
+    assert match.all_clear is True
+
+    app, _, missing = _example_missing_expected_value()
+    assert FieldId.BRAND in app.missing_required_fields()
+    assert missing.all_clear is False
+
+    assert _example_unknown_extraction()[2].all_clear is False
+    assert _example_conflicting_observations()[2].all_clear is False
+
+    timeout = _example_provider_timeout()[2]
+    assert timeout.status is ReviewStatus.INCOMPLETE
+    assert timeout.all_clear is False
+    assert timeout.check_results[0].outcome is CheckOutcome.MATCH
+    assert all(r.outcome is not CheckOutcome.DISCREPANCY for r in timeout.check_results)
+
+
+def test_round_trip_preserves_raw_text_decimals_states_and_evidence_ids():
+    app, fields, _response = _example_match()
+    data = _through_json(extracted_field_to_dict(fields[0]))
+    assert data["observations"][0]["raw_text"] == "OLD  TOM\u00ae"
+
+    abv = _through_json(extracted_field_to_dict(fields[1]))
+    assert abv["observations"][0]["parsed_value"] == {"decimal": "45.0"}
+    restored_abv = extracted_field_from_dict(abv)
+    assert str(restored_abv.observations[0].parsed_value) == "45.0"
+    assert isinstance(restored_abv.observations[0].parsed_value, Decimal)
+
+    restored_app = application_from_dict(_through_json(application_to_dict(app)))
+    assert restored_app.alcohol_content.value == Decimal("45.0")
+    assert str(restored_app.alcohol_content.value) == "45.0"
+
+    conflicting = _example_conflicting_observations()
+    restored_field = extracted_field_from_dict(
+        _through_json(extracted_field_to_dict(conflicting[1][0]))
+    )
+    assert restored_field.state is ExtractionState.CONFLICTING
+    assert [o.raw_text for o in restored_field.observations] == [
+        "Straight Bourbon Whiskey",
+        "Kentucky Bourbon",
+    ]
+    restored = check_result_from_dict(
+        _through_json(check_result_to_dict(conflicting[2].check_results[0]))
+    )
+    assert restored.evidence == (
+        EvidenceRef(FieldId.CLASS_TYPE, 0, "front"),
+        EvidenceRef(FieldId.CLASS_TYPE, 1, "back"),
+    )
+
+
+def test_deserialized_status_is_recomputed_not_trusted():
+    data = _through_json(review_response_to_dict(_example_provider_timeout()[2]))
+    data["status"] = "complete"
+    data["all_clear"] = True
+
+    restored = review_response_from_dict(data)
+
+    assert restored.status is ReviewStatus.INCOMPLETE
+    assert restored.all_clear is False
+
+
+def test_serialized_response_keeps_errors_and_results_separate():
+    data = review_response_to_dict(_example_provider_timeout()[2])
+
+    assert data["processing_errors"][0]["code"] == "provider_timeout"
+    assert {r["outcome"] for r in data["check_results"]} <= {
+        o.value for o in CheckOutcome
+    }
+    assert set(data["processing_errors"][0]) == {
+        "stage",
+        "code",
+        "message",
+        "retryable",
+    }
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d.pop("application_id"),
+        lambda d: d.update(beverage_category="mead"),
+        lambda d: d.update(images=[]),
+        lambda d: d.update(alcohol_content={"decimal": "45"}),
+        lambda d: d.update(
+            alcohol_content={"measurement": {"value": "4x", "unit": "percent_abv"}}
+        ),
+        lambda d: d.update(
+            net_contents={"measurement": {"value": "750", "unit": "percent_abv"}}
+        ),
+    ],
+)
+def test_invalid_application_data_is_rejected_on_deserialization(mutate):
+    data = _through_json(application_to_dict(_example_match()[0]))
+    mutate(data)
+    with pytest.raises(ValueError):
+        application_from_dict(data)
+
+
+def test_invalid_combinations_are_rejected_on_deserialization():
+    result = _through_json(check_result_to_dict(_example_match()[2].check_results[0]))
+    result["outcome"] = "discrepancy"
+    result["evidence"] = []
+    with pytest.raises(ValueError):
+        check_result_from_dict(result)
+
+    field = _through_json(extracted_field_to_dict(_example_match()[1][0]))
+    field["state"] = "missing"
+    with pytest.raises(ValueError):
+        extracted_field_from_dict(field)
+
+    with pytest.raises(TypeError):
+        review_response_from_dict("not an object")
+    with pytest.raises(TypeError):
+        check_result_from_dict(
+            {
+                **check_result_to_dict(_example_match()[2].check_results[0]),
+                "expected_value": {"decimal": 45},
+            }
+        )
+
+
+def test_review_evidence_boundary_reports_every_unresolved_reference():
+    app, fields, _ = _example_conflicting_observations()
+    bad = [
+        EvidenceRef(FieldId.CLASS_TYPE, 5, "front"),
+        EvidenceRef(FieldId.CLASS_TYPE, 0, "back"),
+        EvidenceRef(FieldId.CLASS_TYPE, 1, "elsewhere"),
+    ]
+    response = ReviewResponse(
+        "app-001",
+        [
+            CheckResult(
+                CheckId.CLASS_TYPE,
+                CheckOutcome.NEEDS_REVIEW,
+                FieldId.CLASS_TYPE,
+                explanation="Conflict.",
+                evidence=bad,
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError) as error:
+        validate_review_evidence(response, app, fields)
+
+    message = str(error.value)
+    assert "no such observation" in message
+    assert "image differs" in message
+    assert "unsupplied image 'elsewhere'" in message
+
+
+def test_review_evidence_boundary_rejects_reference_to_unextracted_field():
+    app, _, response = _example_match()
+
+    with pytest.raises(ValueError, match="no extracted field"):
+        validate_review_evidence(response, app, ())

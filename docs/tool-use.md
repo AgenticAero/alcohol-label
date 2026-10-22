@@ -80,6 +80,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Checks performed:** `poetry run pytest` (64 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
 - **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing. Message safety is the producer's responsibility.
 
+### 2026-10-22 — AL-28 contract examples, serialization and boundary validation
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Demonstrate the contracts by example, add JSON round-tripping and validate evidence references at the response boundary.
+- **Inputs:** AL-28 acceptance criteria from Jira, existing schemas and Data contracts section. The developer was unavailable for design questions, so the assistant chose stdlib serialization, a raising boundary validator and Python example builders.
+- **Output used:** `*_to_dict` / `*_from_dict`, `validate_review_evidence`, five contract examples with round-trip, invalid-combination and boundary tests, Data contracts documentation.
+- **Human review / changes:** Diff pending developer review; the unattended design choices need confirming.
+- **Checks performed:** `poetry run pytest` (82 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
+- **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
