@@ -157,6 +157,13 @@ Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`
 - `validate_review_evidence(response, application, extracted_fields)` is the response-boundary check that `EvidenceRef` deferred. It raises one `ValueError` listing every reference that names an unsupplied image, a field with no extraction, an out-of-range observation index, or an image different from the observation's.
 - Contract examples live as builders in `tests/test_schemas.py`: match, missing expected value, unknown extraction (uncertain and missing), conflicting observations, and provider timeout. Tests round-trip them through `json` and run offline with no extraction credentials. They validate contracts only, not live extraction or hosted performance.
 
+Intake (AL-7), in `src/alcohol_label/intake.py`, `review.py` and `app.py`. Decisions:
+
+- Streamlit and Pillow are runtime dependencies: Streamlit serves the UI, and Pillow decodes uploads to validate and preview them. Pillow is therefore deployed, not dev-only.
+- Form strings become `ApplicationData` in a UI-independent module. Blank text is `None`; a non-numeric, zero, negative or non-finite ABV or net-contents value is a readable error, not an exception. Blank required values are not errors; they surface through `missing_required_fields()`.
+- Uploads accept one or two JPEG/PNG files of at most 10 MiB and 20 megapixels that decode with Pillow. They become `ImageReference` records with generated IDs `image-1` and `image-2` and the file name as `uri`; no bytes are stored. Any upload error blocks Verify.
+- Until extraction exists (AL-8), `review_without_extraction` reports all 11 checks as `not_evaluated`, with the missing value named in the reason. Country of origin for a domestic product is `not_applicable`. The UI leads with `all_clear` and an explicit "not a pass" banner and does not display `ReviewResponse.status`, because `complete` means every check has a result, not that any was evaluated.
+
 #### Shared identifiers and states
 
 These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label/schemas.py`.
