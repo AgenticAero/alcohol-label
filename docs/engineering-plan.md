@@ -236,6 +236,16 @@ Confirm the intended host can install dependencies, reach required endpoints and
 
 Record the choice in a short decision entry: context, options, evidence, decision, consequences, and conditions for reconsidering it. Never populate the evidence section with expected rather than observed performance.
 
+#### Decision: extraction and hosting path (AL-6, 2026-10-23)
+
+- **Context:** The brief requires results in about five seconds and warns that the agency network blocks many outbound domains. The prototype is standalone, with no COLA integration and no offline requirement.
+- **Options:** The first option tried, `gpt-6-luna` through the OpenAI Responses API with strict structured output, was usable, so no alternative was tried and local OCR was not measured. Hosting: Azure App Service Linux B1 (Python 3.11).
+- **Evidence:** Spike on the two distinct starter images (S02 and S03 reuse the clear image): 9 of 9 fields exact on every attempt, including the changed warning word. Latency per image at the model default was 3.05 to 4.13 s warm (3.92 s and 7.89 s on the first attempt); 2.52 to 3.13 s at `low` and 2.34 to 3.37 s at `none` (six attempts each). `minimal` is rejected by this model. The warning heading was reported bold on both images, which are both bold, so a negative case is untested. A text-only call from the deployed host (`centralus`, B1) returned HTTP 200 in 4.13 s. Details are in [evaluation.md](evaluation.md).
+- **Decision:** One adapter for `gpt-6-luna`, with the model ID and reasoning effort configurable (`OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`) and `low` as the starting value. Host on Azure App Service B1. The bold signal is a model judgment, not measured evidence; style checks stay `needs_review` unless AL-13 shows it is reliable.
+- **Network:** The path needs outbound HTTPS to `api.openai.com` and does not work offline. A restricted agency network would need that endpoint allowed. There is no automatic local fallback; a failed or blocked call is a processing error, never a pass.
+- **Consequences:** The API key is a server-side app setting. A server-side Oryx build on B1 took 7 to 16 minutes and the container started before it finished, so AL-10 should build in CI or wait for the deployment to report complete. B1 had no quota in `eastus2`; `centralus` is used.
+- **Reconsider if:** held-out or harder images show accuracy loss at `low` or `none`, latency on the deployed app exceeds five seconds, the endpoint is unavailable, or cost becomes a concern. Cost was not measured; a typical request used about 1,760 input and 300 to 400 output tokens.
+
 ## 6. Verification and evaluation plan
 
 ### Tests derived from the brief
