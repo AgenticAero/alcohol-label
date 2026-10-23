@@ -50,7 +50,7 @@ Python and Poetry are the selected runtime and dependency-management foundation.
 | --- | --- |
 | Supported Python version | 3.11 (verified 3.11.11 via `poetry run python --version`); `pyproject.toml` allows `>=3.11,<4.0` |
 | Poetry version | 2.2.1 (verified with `poetry --version`) |
-| UI framework | Proposed; selection pending |
+| UI framework | Streamlit |
 | Extraction provider/model | Pending selection |
 | Hosting platform | Pending selection |
 | Native dependencies and required network endpoints | Pending confirmation |
@@ -73,9 +73,11 @@ Keep credentials outside version control. Document which image data is sent to a
 
 ## Run locally
 
-**Verified startup command:** TODO after the application entry point exists.
+**Startup command:**
 
-**Local URL and expected startup behavior:** TODO.
+    poetry run streamlit run src/alcohol_label/app.py
+
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify validates the input and lists every check as not evaluated, because label extraction is not implemented yet. No settings or credentials are needed.
 
 **Sample review:** Four starter scenarios with expected application values,
 expected outcomes and provenance are in
@@ -111,8 +113,9 @@ differences before committing.
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | `poetry run pytest` | 82 passed (offline schema tests only) |
+| Unit and adapter tests | `poetry run pytest` | 111 passed (offline schema, intake and review tests) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
+| Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
 | Live extraction evaluation | TODO | Not run |
 | Hosted performance evaluation | TODO | Not run |
 
