@@ -93,7 +93,22 @@ Batch throughput and queue delay require separate measurement if batch support i
 
 ## 5. Actual results
 
-**No runs recorded.** All tables below are placeholders. Use “Not run,” “Blocked” or “Not measured” rather than zero where evidence is absent.
+**No evaluation runs recorded.** The AL-6 spike below is feasibility evidence, not an evaluation run, and the tables after it are placeholders. Use “Not run,” “Blocked” or “Not measured” rather than zero where evidence is absent.
+
+### AL-6 feasibility spike (2026-10-23)
+
+Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `gpt-6-luna` through the OpenAI Responses API with a strict JSON schema, only the image sent, `store: false`. Two distinct images: `starter-clear` and `starter-warning-changed` (S02 and S03 reuse the clear image). Development data only; no held-out images. Exact string comparison to `visible_text` in `tests/fixtures/manifest.json`.
+
+| Reasoning effort | Attempts | Exact fields | Latency (s) | Notes |
+| --- | --- | --- | --- | --- |
+| model default | 8 | 9 of 9 each | 3.05 to 4.13 warm; 3.92 and 7.89 first attempt | Later runs reused a cached 1,756-token prefix |
+| `low` | 6 | 9 of 9 each | 2.52 to 3.13 | Reasoning tokens 0 to 74 |
+| `none` | 6 | 9 of 9 each | 2.34 to 3.37 | No reasoning tokens |
+| `minimal` | 6 | Not run | Rejected, HTTP 400 | Unsupported for this model |
+
+- **Bold signal:** "yes" on both images, both of which have a bold heading. No negative case was tested.
+- **Hosted check:** text-only call from the Azure App Service B1 host returned HTTP 200 in 4.13 s. No image extraction was run on the host.
+- **Limits:** Few attempts; warm and cached conditions; client was the developer's machine, not the deployed app; cost not measured. This does not establish accuracy on other layouts, photographed labels or the five-second target.
 
 ### Run context
 

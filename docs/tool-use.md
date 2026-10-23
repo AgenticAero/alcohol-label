@@ -112,6 +112,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** Rendering twice gave identical SHA-256 hashes; `poetry run pytest` (95 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); `git diff --check` (clean).
 - **Pending checks / limitations:** Offline schema and manifest checks only; no extraction was run on these images, so they say nothing about extraction accuracy or boldness detection. Rendering depends on the installed DejaVu fonts, so the committed PNGs are the source of truth. The reference images are unannotated and their permitted use is unconfirmed.
 
+### 2026-10-23 — AL-6 extraction and hosting feasibility
+
+- **Tool / version:** OpenAI Responses API, model `gpt-6-luna`; Azure App Service Linux B1 (Python 3.11, `centralus`), Azure CLI 2.83.0; GitHub Copilot (VS Code agent), exact model/version not recorded.
+- **Purpose:** Choose an extraction path and hosting target and measure accuracy and latency on the starter fixtures.
+- **Inputs:** AL-6 and sub-tasks AL-29 to AL-32, the starter fixtures and manifest, and the developer's API key and Azure subscription. The extraction prompt and schema are in `scripts/al6_extraction_spike.py`.
+- **Output used:** The spike script, the `OPENAI_*` variable names in `.env.example`, a throwaway Streamlit check app deployed to `alcohol-label-staging`, and the decision entry in the engineering plan.
+- **Human review / changes:** The developer supplied the key and model, chose App Service B1 and Streamlit, ran extra spike attempts, and confirmed the hosted call result in a browser.
+- **Checks performed:** Spike runs recorded in [evaluation.md](evaluation.md); `poetry run ruff check scripts` and `ruff format --check scripts` passed; hosted call returned HTTP 200 in 4.13 s.
+- **Pending checks / limitations:** Not a live evaluation: few attempts, no held-out images, no negative bold example, no cost measurement. The check app and Azure resources are temporary.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
