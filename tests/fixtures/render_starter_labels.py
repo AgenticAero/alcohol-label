@@ -106,9 +106,14 @@ def render(warning_body: str, font_dir: Path) -> Image.Image:
 
     _centered(draw, 90, "OLD TOM", _font(font_dir, "DejaVuSerif-Bold.ttf", 120), ACCENT)
     _centered(
-        draw, 250, "Straight Bourbon Whiskey", _font(font_dir, "DejaVuSerif-Bold.ttf", 46)
+        draw,
+        250,
+        "Straight Bourbon Whiskey",
+        _font(font_dir, "DejaVuSerif-Bold.ttf", 46),
     )
-    _centered(draw, 340, "45% Alc./Vol. (90 Proof)", _font(font_dir, "DejaVuSerif.ttf", 40))
+    _centered(
+        draw, 340, "45% Alc./Vol. (90 Proof)", _font(font_dir, "DejaVuSerif.ttf", 40)
+    )
     _centered(draw, 410, "750 mL", _font(font_dir, "DejaVuSerif.ttf", 40))
     small = _font(font_dir, "DejaVuSerif.ttf", 30)
     _centered(draw, 500, "Distilled and bottled by Example Distillery", small)
@@ -121,7 +126,9 @@ def main() -> None:
     args = parse_args()
     OUT_DIR.mkdir(exist_ok=True)
     render(WARNING_BODY, args.font_dir).save(OUT_DIR / "starter-clear.png")
-    render(CHANGED_WARNING_BODY, args.font_dir).save(OUT_DIR / "starter-warning-changed.png")
+    render(CHANGED_WARNING_BODY, args.font_dir).save(
+        OUT_DIR / "starter-warning-changed.png"
+    )
 
 
 if __name__ == "__main__":
