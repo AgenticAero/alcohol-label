@@ -6,17 +6,19 @@ Record meaningful uses and decisions, not every command or chat message. Group r
 
 ## Development tools
 
-The project setup below is based on developer-reported use; versions and setup checks still need to be recorded.
+Versions below were reported by the developer and re-checked on 2026-10-22 with `poetry run python --version`, `poetry --version`, `poetry run pytest --version` and `poetry run ruff --version`. Clean-environment installation is still pending.
 
-| Tool | Purpose | Version / configuration | Verification or evidence |
-| --- | --- | --- | --- |
-| Python | Application runtime | Python 3.11 indicated by the local environment; exact version pending | Pending: record `poetry run python --version` and confirm the project interpreter. |
-| Poetry | Dependency and virtual environment management | Pending: `poetry --version` | Pending: verify installation from the committed dependency files in a clean environment. |
-| VS Code | Editing and local development | Pending: version and relevant extensions | Pending: confirm the selected interpreter belongs to this project's virtual environment. |
-| Git / GitHub | Version control and remote repository | Pending: repository URL | Pending: confirm the intended remote and pushed commit. |
-| Jira | Sprint and backlog tracking | Pending: project link | Pending: check imported hierarchy and work items against the intended backlog. |
+| Tool | Purpose | Version / configuration |
+| --- | --- | --- |
+| Python | Application runtime | Python 3.11.11 .venv/bin/python |
+| pytest | test | pytest 9.1.1 |
+| Poetry | Dependency and virtual environment management | version 2.2.1 |
+| VS Code | Editing and local development | 1.143.0 |
+| Git / GitHub | Version control and remote repository | https://github.com/AgenticAero/alcohol-label |
+| Jira | Sprint and backlog tracking | https://agentic-team.atlassian.net/jira/software/projects/AL/boards/67/backlog |
+| Ruff | lint, format | ruff 0.17.1 |
 
-Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hosting only when actually used. Proposed tools are documented in the engineering plan.
+Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering script and manifest tests. Add Streamlit, Pydantic, an OCR/vision provider, and hosting only when actually used. Proposed tools are documented in the engineering plan.
 
 ## AI assistance
 
@@ -89,6 +91,26 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, pytest, Ruff and hostin
 - **Human review / changes:** Diff pending developer review; the unattended design choices need confirming.
 - **Checks performed:** `poetry run pytest` (82 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git diff --check` (clean).
 - **Pending checks / limitations:** Offline schema checks only; no live extraction, UI or performance testing.
+
+### 2026-10-22 — AL-5 AC3 setup verification and `.env.example`
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded.
+- **Purpose:** Verify recorded tool versions and local commands, add a secret-free `.env.example`, and replace verified README setup TODOs.
+- **Inputs:** AL-5 acceptance criterion 3, README, the developer's version table above.
+- **Output used:** `.env.example` (comments only, no variables, since nothing reads the environment yet), README setup and checks rows. Versions matched the table: Python 3.11.11, Poetry 2.2.1, pytest 9.1.1, Ruff 0.17.1.
+- **Human review / changes:** Diff pending developer review.
+- **Checks performed:** `poetry install --dry-run` (resolved; packages already installed); `poetry run pytest -q` (82 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git check-ignore .env` (ignored).
+- **Pending checks / limitations:** Not run from a clean checkout or fresh virtual environment; no live extraction, UI or performance testing.
+
+### 2026-10-22 — AL-5 AC4 starter fixtures and manifest
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded. Pillow 13.0.0.
+- **Purpose:** Create four starter fixtures with expected values, expected outcomes and provenance.
+- **Inputs:** AL-5 acceptance criterion 4, the engineering plan and evaluation docs, the AL-28 serialization format, and source URLs supplied by the developer for the existing images. The developer chose synthetic rendering, a JSON manifest and an offline manifest test.
+- **Output used:** `tests/fixtures/render_starter_labels.py`, `labels/starter-clear.png`, `labels/starter-warning-changed.png`, `tests/fixtures/manifest.json`, `tests/test_fixtures.py`, and the README, evaluation and engineering-plan notes. `poetry add --group dev pillow` changed `pyproject.toml` and `poetry.lock`.
+- **Human review / changes:** The assistant viewed both rendered PNGs and annotated what is visible: a bold uppercase heading, a regular-weight body, and the single changed word. Developer review of the annotations is pending. Provenance for the reference images is as reported by the developer; permission is not confirmed.
+- **Checks performed:** Rendering twice gave identical SHA-256 hashes; `poetry run pytest` (95 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); `git diff --check` (clean).
+- **Pending checks / limitations:** Offline schema and manifest checks only; no extraction was run on these images, so they say nothing about extraction accuracy or boldness detection. Rendering depends on the installed DejaVu fonts, so the committed PNGs are the source of truth. The reference images are unannotated and their permitted use is unconfirmed.
 
 ## Entry template
 

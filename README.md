@@ -48,8 +48,8 @@ Python and Poetry are the selected runtime and dependency-management foundation.
 
 | Item | Status |
 | --- | --- |
-| Supported Python version | Pending verification and recording |
-| Poetry version | Pending verification and recording |
+| Supported Python version | 3.11 (verified 3.11.11 via `poetry run python --version`); `pyproject.toml` allows `>=3.11,<4.0` |
+| Poetry version | 2.2.1 (verified with `poetry --version`) |
 | UI framework | Proposed; selection pending |
 | Extraction provider/model | Pending selection |
 | Hosting platform | Pending selection |
@@ -59,15 +59,15 @@ Actual tools and AI assistance are documented in [Tool use](docs/tool-use.md).
 
 ## Setup
 
-**Pending implementation and clean-environment verification.** Replace the placeholders below with commands that have actually been tested.
+**Partly verified.** Commands marked verified were run in the existing local environment on 2026-10-22; a fully clean-environment run is still pending.
 
 | Step | Instructions |
 | --- | --- |
-| Obtain the source | TODO: Add the repository URL and clone command. |
-| Install prerequisites | TODO: State supported Python/Poetry versions and any native dependencies. |
-| Install dependencies | TODO: Add the verified Poetry installation command, including any required dependency groups. |
-| Configure the application | TODO: List required settings, credential setup and required endpoints. Link to a secret-free `.env.example` once created. |
-| Confirm the environment | TODO: Add a simple command that confirms the expected interpreter/configuration. |
+| Obtain the source | `git clone https://github.com/AgenticAero/alcohol-label.git && cd alcohol-label` |
+| Install prerequisites | Python 3.11 and Poetry 2.2.x. No native dependencies are needed so far. |
+| Install dependencies | `poetry install` (includes the `dev` group: pytest, Ruff, pre-commit, commitizen). Verified as a dry run against the existing environment. |
+| Configure the application | No settings are required yet. [`.env.example`](.env.example) is a secret-free placeholder; copy it to `.env` (Git-ignored) when settings are added. Provider credentials and endpoints are TODO until a provider is chosen. |
+| Confirm the environment | `poetry run python -c "import sys, alcohol_label; print(sys.version.split()[0], alcohol_label.__file__)"` prints `3.11.11` and the `src/alcohol_label` path (verified). |
 
 Keep credentials outside version control. Document which image data is sent to an external service, if applicable, and how uploaded data is retained or cleaned up.
 
@@ -77,14 +77,42 @@ Keep credentials outside version control. Document which image data is sent to a
 
 **Local URL and expected startup behavior:** TODO.
 
-**Sample review:** TODO: Link to reviewed sample images and expected input values once available. Include a matching example and a deliberate discrepancy.
+**Sample review:** Four starter scenarios with expected application values,
+expected outcomes and provenance are in
+[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json):
+a clear match (`S01`), a case-only brand variation (`S02`),
+an ABV mismatch (`S03`) and a changed warning word (`S04`).
+They use `tests/fixtures/labels/starter-clear.png` and
+`tests/fixtures/labels/starter-warning-changed.png`.
+Annotations are pending developer review.
+
+**Regenerating starter images (optional):** The committed PNGs are the
+authoritative fixtures. Using them does not require DejaVu fonts.
+
+Regeneration requires Pillow in the Poetry environment and these font files:
+`DejaVuSans.ttf`, `DejaVuSans-Bold.ttf`, `DejaVuSerif.ttf` and
+`DejaVuSerif-Bold.ttf`.
+
+The script defaults to `/usr/share/fonts/truetype/dejavu`:
+
+    poetry run python tests/fixtures/render_starter_labels.py
+
+If the fonts are installed elsewhere, supply their directory:
+
+    poetry run python tests/fixtures/render_starter_labels.py --font-dir "/path/to/fonts"
+
+Rendering can vary with font versions, Pillow and the rendering environment.
+After regeneration, visually inspect both images and confirm that they match
+their annotations and differ only in the intended warning word. Update the
+manifest hashes only after accepting any changes; investigate unexpected
+differences before committing.
 
 ## Tests and code checks
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | TODO | Not run |
-| Formatting/linting | TODO | Not run |
+| Unit and adapter tests | `poetry run pytest` | 82 passed (offline schema tests only) |
+| Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
 | Live extraction evaluation | TODO | Not run |
 | Hosted performance evaluation | TODO | Not run |
 

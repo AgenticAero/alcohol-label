@@ -1,0 +1,300 @@
+{
+  "manifest_version": 1,
+  "dataset_version": "starter-0.1",
+  "notes": [
+    "Starter set of four scenarios built from two synthetic labels. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
+    "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
+    "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
+    "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
+  ],
+  "annotation": {
+    "annotator": "GitHub Copilot (VS Code agent), viewing the PNG pixels",
+    "date": "2026-10-22",
+    "developer_review": "pending"
+  },
+  "images": [
+    {
+      "image_id": "starter-clear",
+      "file": "labels/starter-clear.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 72914,
+      "sha256": "b9c93cee04fdea8bd31dd5d14e78aeebe1fb5acc783395d7615bd5482a12564f",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": null
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "starter-warning-changed",
+      "file": "labels/starter-warning-changed.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 73034,
+      "sha256": "294ad0b311078ee26e55e6ece0b026f5635682f92413e1b3f65acabe32934bcc",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "In warning part (2), \"impairs\" is replaced by \"affects\". Everything else is identical to starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages affects your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "S01-clear-match",
+      "description": "Clear label and an application that matches it exactly.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S01-clear-match",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S02-brand-case-only",
+      "description": "Expected brand differs from the label only in letter case.",
+      "split": "development",
+      "deliberate_defect": "Application brand is \"Old Tom\"; the label shows \"OLD TOM\".",
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S02-brand-case-only",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "Old Tom",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S03-abv-mismatch",
+      "description": "Expected alcohol content differs from the label.",
+      "split": "development",
+      "deliberate_defect": "Application ABV is 40.0%; the label shows 45%.",
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S03-abv-mismatch",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "40.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "discrepancy",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S04-warning-text-changed",
+      "description": "Application matches, but one word in the label's government warning is changed.",
+      "split": "development",
+      "deliberate_defect": "Warning part (2) reads \"affects\" instead of \"impairs\".",
+      "image_files": ["labels/starter-warning-changed.png"],
+      "application": {
+        "application_id": "S04-warning-text-changed",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-warning-changed.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "discrepancy",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    }
+  ],
+  "reference_images": {
+    "status": "Not starter fixtures. Not annotated and not used by any scenario; permitted use is unconfirmed. Source URLs were supplied by the developer on 2026-10-22; the srsltid tracking parameter was removed from retailer URLs.",
+    "images": [
+      {
+        "file": "labels/image.png",
+        "format": "PNG",
+        "width": 609,
+        "height": 417,
+        "bytes": 276796,
+        "sha256": "daaf1dfbcad914a47c975abf4c7ef787c3477ddaddeffe70f539cb4be3a46c9b",
+        "source_url": "https://www.ttb.gov/regulated-commodities/beverage-alcohol/distilled-spirits/ds-labeling-home/ds-brand-label",
+        "source_type": "public sample (TTB)",
+        "permission": "Not independently confirmed",
+        "note": "Front and back panels in one file, so it cannot be split into two application images without editing."
+      },
+      {
+        "file": "labels/brand-label-new2.jpg",
+        "format": "JPEG",
+        "width": 599,
+        "height": 391,
+        "bytes": 43494,
+        "sha256": "582e350ff0caa9d3d363be959228a9ebb4ae385c41ed6ae94d2927f35372256e",
+        "source_url": "https://www.ttb.gov/regulated-commodities/beverage-alcohol/distilled-spirits/ds-labeling-home/ds-brand-label",
+        "source_type": "public sample (TTB)",
+        "permission": "Not independently confirmed",
+        "note": "Imported-rum sample; front and back panels in one file."
+      },
+      {
+        "file": "labels/brand-name2.png",
+        "format": "PNG",
+        "width": 451,
+        "height": 300,
+        "bytes": 89188,
+        "sha256": "4241729d783247f8b8255e7200330fc4a3fee4ed9bd4f944e8bd03093a02dcfe",
+        "source_url": "https://www.ttb.gov/regulated-commodities/beverage-alcohol/distilled-spirits/ds-labeling-home/ds-brand-name",
+        "source_type": "public sample (TTB)",
+        "permission": "Not independently confirmed",
+        "note": "Single wrap-style label image."
+      },
+      {
+        "file": "labels/5686_original.jpg",
+        "format": "JPEG",
+        "width": 1440,
+        "height": 814,
+        "bytes": 130889,
+        "sha256": "73ef59b704f4c7481594f7a455d7d77ef09f6751a86cf45d57380293e4a4f11f",
+        "source_url": "https://www.fullcolordigitallabels.com/service/distillery-labels/",
+        "source_type": "vendor marketing image",
+        "permission": "Not confirmed; third-party content",
+        "note": "Warning text is rotated along the left edge."
+      },
+      {
+        "file": "labels/J-Riley-Moonshine-750ML-BTL.jpg",
+        "format": "JPEG",
+        "width": 480,
+        "height": 480,
+        "bytes": 53383,
+        "sha256": "ad6ea3d2eb47419cf2fdcc4a65a09992e793afcbcd71969326acde5b9a3149f2",
+        "source_url": "https://craftshack.com/products/j-riley-moonshine",
+        "source_type": "retailer product image",
+        "permission": "Not confirmed; third-party content",
+        "note": "Small image with very small warning text."
+      },
+      {
+        "file": "labels/Cola-Detail-3.webp",
+        "format": "WEBP",
+        "width": 677,
+        "height": 415,
+        "bytes": 59190,
+        "sha256": "cbb85a80139e38b66ac49602f031702bb7bd08f52de2b0afaa38e1df59b71d10",
+        "source_url": "https://cocktailwonk.com/2015/10/a-wonky-guide-to-finding-unreleased-and-obscure-spirits.html",
+        "source_type": "blog image",
+        "permission": "Not confirmed; third-party content",
+        "note": "WebP is outside the planned JPEG/PNG upload scope; a candidate for the unsupported-format scenario."
+      },
+      {
+        "file": "labels/barrell-craft-spirits-grey-label-13-year-606429_grande.webp",
+        "format": "WEBP",
+        "width": 464,
+        "height": 600,
+        "bytes": 38648,
+        "sha256": "043286d222462380aa23c6df4014e40e7d1b794acc4eb552d21e7d855cb90b7b",
+        "source_url": "https://www.buymyliquor.com/products/barrell-craft-spirits-grey-label-13-year",
+        "source_type": "retailer product image",
+        "permission": "Not confirmed; third-party content",
+        "note": "WebP is outside the planned JPEG/PNG upload scope; a candidate for the unsupported-format scenario."
+      }
+    ]
+  }
+}

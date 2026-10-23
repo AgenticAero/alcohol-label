@@ -18,7 +18,7 @@ Start with four visually verified scenarios: a clear match, case-only brand vari
 
 Store reusable inputs and annotations in `tests/fixtures/`. Keep one fixture manifest alongside them; link it here when created instead of duplicating every annotation in this document.
 
-**Fixture manifest:** Pending creation.
+**Fixture manifest:** [`tests/fixtures/manifest.json`](../tests/fixtures/manifest.json) (`starter-0.1`), checked offline by `tests/test_fixtures.py`. It holds four starter scenarios (`S01` clear match, `S02` case-only brand, `S03` ABV mismatch, `S04` changed warning word) on two synthetic labels, plus the existing public or vendor images as unannotated reference images with source URLs and unconfirmed permission. Annotations are pending developer review. All scenarios are development data; no held-out set exists yet. Expected outcomes are pixel ground truth, not extractor results.
 
 For each scenario, record:
 
