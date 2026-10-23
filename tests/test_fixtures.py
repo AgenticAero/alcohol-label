@@ -1,5 +1,7 @@
 import hashlib
 import json
+import re
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -138,6 +140,39 @@ def test_annotations_agree_with_the_applications_and_the_warning_change():
     assert clear["class_type"] == expected["class_type"]
     assert clear["producer_name"] == expected["producer_name"]
     assert clear["producer_address"] == expected["producer_address"]
+
+    abv = re.search(
+        r"([\d.]+)% Alc\./Vol\. \(([\d.]+) Proof\)", clear["alcohol_content"]
+    )
+    assert abv is not None
+    expected_abv = Decimal(expected["alcohol_content"]["measurement"]["value"])
+    assert Decimal(abv[1]) == expected_abv
+    assert Decimal(abv[2]) == expected_abv * 2
+    volume = re.fullmatch(r"([\d.]+) mL", clear["net_contents"])
+    assert volume is not None
+    assert Decimal(volume[1]) == Decimal(
+        expected["net_contents"]["measurement"]["value"]
+    )
+    assert expected["net_contents"]["measurement"]["unit"] == "ml"
+    assert clear["country_of_origin"] is None
+    assert not expected["is_imported"]
+
+    for name in ("labels/starter-clear.png", "labels/starter-warning-changed.png"):
+        style = STARTERS[name]["visible_style"]
+        assert style == {
+            "warning_heading": "bold, uppercase",
+            "warning_body": "regular weight",
+        }
+        assert (
+            STARTERS[name]["visible_text"]["warning_heading"] == "GOVERNMENT WARNING:"
+        )
+    outcomes = SCENARIOS["S01-clear-match"]["expected_outcomes"]
+    for check in (
+        "warning_heading_case",
+        "warning_heading_bold",
+        "warning_body_not_bold",
+    ):
+        assert outcomes[check] == "match"
 
     assert {k for k in clear if clear[k] != changed[k]} == {"warning_body"}
     assert (
