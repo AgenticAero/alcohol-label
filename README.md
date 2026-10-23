@@ -77,7 +77,7 @@ Keep credentials outside version control. Document which image data is sent to a
 
 **Local URL and expected startup behavior:** TODO.
 
-**Sample review:** TODO: Link to reviewed sample images and expected input values once available. Include a matching example and a deliberate discrepancy.
+**Sample review:** Four starter scenarios with expected application values, expected outcomes and provenance are in [`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): a clear match (`S01`), a case-only brand variation (`S02`), an ABV mismatch (`S03`) and a changed warning word (`S04`). They use the synthetic labels `tests/fixtures/labels/starter-clear.png` and `starter-warning-changed.png`. Annotations are pending developer review. Regenerate the images with `poetry run python tests/fixtures/render_starter_labels.py`, then update the manifest hashes.
 
 ## Tests and code checks
 

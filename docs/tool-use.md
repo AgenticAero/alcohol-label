@@ -18,7 +18,7 @@ Versions below were reported by the developer and re-checked on 2026-10-22 with 
 | Jira | Sprint and backlog tracking | https://agentic-team.atlassian.net/jira/software/projects/AL/boards/67/backlog |
 | Ruff | lint, format | ruff 0.17.1 |
 
-Add Streamlit, Pydantic, Pillow, an OCR/vision provider, and hosting only when actually used. Proposed tools are documented in the engineering plan.
+Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering script and manifest tests. Add Streamlit, Pydantic, an OCR/vision provider, and hosting only when actually used. Proposed tools are documented in the engineering plan.
 
 ## AI assistance
 
@@ -101,6 +101,16 @@ Add Streamlit, Pydantic, Pillow, an OCR/vision provider, and hosting only when a
 - **Human review / changes:** Diff pending developer review.
 - **Checks performed:** `poetry install --dry-run` (resolved; packages already installed); `poetry run pytest -q` (82 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (10 files already formatted); `git check-ignore .env` (ignored).
 - **Pending checks / limitations:** Not run from a clean checkout or fresh virtual environment; no live extraction, UI or performance testing.
+
+### 2026-10-22 — AL-5 AC4 starter fixtures and manifest
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded. Pillow 13.0.0.
+- **Purpose:** Create four starter fixtures with expected values, expected outcomes and provenance.
+- **Inputs:** AL-5 acceptance criterion 4, the engineering plan and evaluation docs, the AL-28 serialization format, and source URLs supplied by the developer for the existing images. The developer chose synthetic rendering, a JSON manifest and an offline manifest test.
+- **Output used:** `tests/fixtures/render_starter_labels.py`, `labels/starter-clear.png`, `labels/starter-warning-changed.png`, `tests/fixtures/manifest.json`, `tests/test_fixtures.py`, and the README, evaluation and engineering-plan notes. `poetry add --group dev pillow` changed `pyproject.toml` and `poetry.lock`.
+- **Human review / changes:** The assistant viewed both rendered PNGs and annotated what is visible: a bold uppercase heading, a regular-weight body, and the single changed word. Developer review of the annotations is pending. Provenance for the reference images is as reported by the developer; permission is not confirmed.
+- **Checks performed:** Rendering twice gave identical SHA-256 hashes; `poetry run pytest` (95 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); `git diff --check` (clean).
+- **Pending checks / limitations:** Offline schema and manifest checks only; no extraction was run on these images, so they say nothing about extraction accuracy or boldness detection. Rendering depends on the installed DejaVu fonts, so the committed PNGs are the source of truth. The reference images are unannotated and their permitted use is unconfirmed.
 
 ## Entry template
 
