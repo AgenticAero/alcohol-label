@@ -77,7 +77,35 @@ Keep credentials outside version control. Document which image data is sent to a
 
 **Local URL and expected startup behavior:** TODO.
 
-**Sample review:** Four starter scenarios with expected application values, expected outcomes and provenance are in [`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): a clear match (`S01`), a case-only brand variation (`S02`), an ABV mismatch (`S03`) and a changed warning word (`S04`). They use the synthetic labels `tests/fixtures/labels/starter-clear.png` and `starter-warning-changed.png`. Annotations are pending developer review. Regenerate the images with `poetry run python tests/fixtures/render_starter_labels.py`, then update the manifest hashes.
+**Sample review:** Four starter scenarios with expected application values,
+expected outcomes and provenance are in
+[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json):
+a clear match (`S01`), a case-only brand variation (`S02`),
+an ABV mismatch (`S03`) and a changed warning word (`S04`).
+They use `tests/fixtures/labels/starter-clear.png` and
+`tests/fixtures/labels/starter-warning-changed.png`.
+Annotations are pending developer review.
+
+**Regenerating starter images (optional):** The committed PNGs are the
+authoritative fixtures. Using them does not require DejaVu fonts.
+
+Regeneration requires Pillow in the Poetry environment and these font files:
+`DejaVuSans.ttf`, `DejaVuSans-Bold.ttf`, `DejaVuSerif.ttf` and
+`DejaVuSerif-Bold.ttf`.
+
+The script defaults to `/usr/share/fonts/truetype/dejavu`:
+
+    poetry run python tests/fixtures/render_starter_labels.py
+
+If the fonts are installed elsewhere, supply their directory:
+
+    poetry run python tests/fixtures/render_starter_labels.py --font-dir "/path/to/fonts"
+
+Rendering can vary with font versions, Pillow and the rendering environment.
+After regeneration, visually inspect both images and confirm that they match
+their annotations and differ only in the intended warning word. Update the
+manifest hashes only after accepting any changes; investigate unexpected
+differences before committing.
 
 ## Tests and code checks
 
