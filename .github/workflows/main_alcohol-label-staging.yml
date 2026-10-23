@@ -5,9 +5,7 @@
 name: Build and deploy Python app to Azure Web App - alcohol-label-staging
 
 on:
-  push:
-    branches:
-      - 'main'
+  # Push trigger disabled until AL-10 adapts this workflow for Poetry.
   workflow_dispatch:
 
 jobs:
