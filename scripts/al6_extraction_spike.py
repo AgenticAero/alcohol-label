@@ -119,16 +119,27 @@ def output_text(response: dict) -> str:
 
 
 def compare(observed: dict, truth: dict) -> dict:
-    """Exact-string comparison to the manifest's visible_text."""
+    """Compare text and extraction state against annotated visible_text.
+
+    An explicit null in truth means the field is absent from the image.
+    Every evaluated field must have a ground-truth annotation.
+    """
     results = {}
     for name in TEXT_FIELDS:
-        expected = truth.get(name)
+        expected = truth[name]
         got = observed[name]["text"]
+        state = observed[name]["state"]
+
+        if expected is None:
+            exact = got is None and state == "missing"
+        else:
+            exact = got == expected and state == "observed"
+
         results[name] = {
             "expected": expected,
             "observed": got,
-            "state": observed[name]["state"],
-            "exact": got == expected,
+            "state": state,
+            "exact": exact,
         }
     return results
 
