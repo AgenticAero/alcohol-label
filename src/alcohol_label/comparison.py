@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from decimal import Decimal
 
 from alcohol_label.schemas import (
@@ -159,6 +160,109 @@ def compare_alcohol_content(
         expected,
         extracted,
         f"Label states {values[0]}%; expected {expected.value}%.",
+    )
+
+
+_ML_PER_UNIT = {
+    Unit.MILLILITER: Decimal(1),
+    Unit.LITER: Decimal(1000),
+    Unit.FLUID_OUNCE: Decimal("29.5735295625"),
+}
+_VOLUME = re.compile(
+    r"(?<![\d.])(\d+(?:\.\d+)?|\.\d+)\s*"
+    r"(?:(?P<floz>fl\.?\s*oz|fluid\s+ounces?)"
+    r"|(?P<ml>m\.?l|milli(?:l|li)?ters?)"
+    r"|(?P<l>l|li(?:t|tr)?ers?|litres?))"
+    r"(?![a-z])",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class PrintedVolume:
+    """One volume statement as printed, with its exact value in millilitres."""
+
+    value: Decimal
+    unit: Unit
+
+    @property
+    def millilitres(self) -> Decimal:
+        return self.value * _ML_PER_UNIT[self.unit]
+
+    @property
+    def is_metric(self) -> bool:
+        return self.unit is not Unit.FLUID_OUNCE
+
+
+def _fmt(value: Decimal) -> str:
+    return format(value.normalize(), "f")
+
+
+def _describe(value: Decimal, unit: Unit) -> str:
+    return f"{_fmt(value)} {unit.value}"
+
+
+def parse_volumes(text: str) -> tuple[PrintedVolume, ...]:
+    """Supported volume statements (mL, L, fl oz) in order of appearance."""
+    found = []
+    for m in _VOLUME.finditer(text):
+        unit = (
+            Unit.FLUID_OUNCE
+            if m.group("floz")
+            else Unit.MILLILITER
+            if m.group("ml")
+            else Unit.LITER
+        )
+        found.append(PrintedVolume(Decimal(m.group(1)), unit))
+    return tuple(found)
+
+
+def compare_net_contents(
+    expected: Measurement | None, extracted: ExtractedField | None
+) -> CheckResult:
+    """Compare against the printed metric statement; fl oz never decides the result."""
+    check = CheckId.NET_CONTENTS
+    unresolved = unresolved_result(check, expected, extracted)
+    if unresolved is not None:
+        return unresolved
+    volumes = parse_volumes(extracted.observations[0].raw_text)
+    metric = [v for v in volumes if v.is_metric]
+    if not metric:
+        reason = (
+            "Only a fluid-ounce statement was observed; the required metric "
+            "statement was not."
+            if volumes
+            else "No supported volume statement (mL, L or fl oz) could be read."
+        )
+        return build_result(
+            check, CheckOutcome.NEEDS_REVIEW, expected, extracted, reason
+        )
+    distinct = {v.millilitres for v in metric}
+    if len(distinct) > 1:
+        listed = ", ".join(_describe(v.value, v.unit) for v in metric)
+        return build_result(
+            check,
+            CheckOutcome.NEEDS_REVIEW,
+            expected,
+            extracted,
+            f"Label text contains differing metric volumes ({listed}).",
+        )
+    printed = _describe(metric[0].value, metric[0].unit)
+    wanted = _describe(expected.value, expected.unit)
+    if distinct == {expected.value * _ML_PER_UNIT[expected.unit]}:
+        return build_result(
+            check,
+            CheckOutcome.MATCH,
+            expected,
+            extracted,
+            f"Printed {printed} equals the expected {wanted}.",
+        )
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        expected,
+        extracted,
+        f"Label states {printed}; expected {wanted}.",
     )
 
 

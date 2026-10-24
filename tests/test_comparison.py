@@ -6,8 +6,10 @@ from alcohol_label.comparison import (
     compare_alcohol_content,
     compare_brand,
     compare_class_type,
+    compare_net_contents,
     compare_producer_name,
     parse_percentages,
+    parse_volumes,
 )
 from alcohol_label.schemas import (
     CheckOutcome,
@@ -230,3 +232,84 @@ def test_abv_missing_expected_and_unknown_extraction():
     result = compare_alcohol_content(_abv("45"), conflicting)
     assert result.outcome is CheckOutcome.NEEDS_REVIEW
     assert len(result.evidence) == 2
+
+
+def _volume(value: str, unit: Unit = Unit.MILLILITER) -> Measurement:
+    return Measurement(Decimal(value), unit)
+
+
+def _net(text: str) -> ExtractedField:
+    return _text_field(FieldId.NET_CONTENTS, text)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("750 mL", [(750, Unit.MILLILITER)]),
+        ("750ML", [(750, Unit.MILLILITER)]),
+        ("NET CONTENTS 0.75 L", [("0.75", Unit.LITER)]),
+        ("1.75 Liters", [("1.75", Unit.LITER)]),
+        ("750 mL / 25.4 FL. OZ.", [(750, Unit.MILLILITER), ("25.4", Unit.FLUID_OUNCE)]),
+        ("25.4 fluid ounces", [("25.4", Unit.FLUID_OUNCE)]),
+        ("75 cl", []),
+        ("Louisville, KY 40202", []),
+    ],
+)
+def test_parse_volumes(text, expected):
+    parsed = [(v.value, v.unit) for v in parse_volumes(text)]
+    assert parsed == [(Decimal(str(n)), u) for n, u in expected]
+
+
+def test_fl_oz_converts_with_exact_factor():
+    (volume,) = parse_volumes("10 fl oz")
+    assert volume.millilitres == Decimal("295.735295625")
+
+
+@pytest.mark.parametrize(
+    "printed", ["750 mL", "750 mL / 25.4 fl oz", "0.75 L", "750 ML (25.4 FL. OZ.)"]
+)
+def test_net_contents_metric_statement_matches(printed):
+    result = compare_net_contents(_volume("750"), _net(printed))
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.observed_value == printed
+    assert result.evidence[0].image_id == "front"
+
+
+def test_net_contents_expected_in_litres_matches_millilitres():
+    result = compare_net_contents(_volume("0.75", Unit.LITER), _net("750 mL"))
+    assert result.outcome is CheckOutcome.MATCH
+
+
+def test_net_contents_only_fl_oz_needs_review():
+    result = compare_net_contents(_volume("750"), _net("25.4 fl oz"))
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "metric" in result.explanation
+
+
+def test_net_contents_different_metric_value_is_discrepancy():
+    result = compare_net_contents(_volume("750"), _net("700 mL"))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert "700 ml" in result.explanation and "750 ml" in result.explanation
+    assert result.evidence
+
+
+def test_net_contents_secondary_fl_oz_never_changes_outcome():
+    result = compare_net_contents(_volume("750"), _net("750 mL / 99 fl oz"))
+    assert result.outcome is CheckOutcome.MATCH
+    result = compare_net_contents(_volume("750"), _net("700 mL / 25.4 fl oz"))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+
+
+@pytest.mark.parametrize("printed", ["75 cl", "ONE PINT", "700 mL and 750 mL"])
+def test_net_contents_unsupported_or_conflicting_needs_review(printed):
+    result = compare_net_contents(_volume("750"), _net(printed))
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+
+
+def test_net_contents_missing_expected_and_unknown_extraction():
+    assert compare_net_contents(None, _net("750 mL")).outcome is (
+        CheckOutcome.NOT_EVALUATED
+    )
+    assert compare_net_contents(_volume("750"), None).outcome is (
+        CheckOutcome.NEEDS_REVIEW
+    )
