@@ -1,16 +1,22 @@
+from decimal import Decimal
+
 import pytest
 
 from alcohol_label.comparison import (
+    compare_alcohol_content,
     compare_brand,
     compare_class_type,
     compare_producer_name,
+    parse_percentages,
 )
 from alcohol_label.schemas import (
     CheckOutcome,
     ExtractedField,
     ExtractionState,
     FieldId,
+    Measurement,
     Observation,
+    Unit,
 )
 
 
@@ -141,3 +147,86 @@ class TestTextFields:
         uncertain = ExtractedField(field_id, ExtractionState.UNCERTAIN, (), "Blurred.")
         assert compare("Bourbon", uncertain).outcome is CheckOutcome.NEEDS_REVIEW
         assert compare("Bourbon", None).outcome is CheckOutcome.NEEDS_REVIEW
+
+
+def _abv(value: str) -> Measurement:
+    return Measurement(Decimal(value), Unit.PERCENT_ABV)
+
+
+def _abv_field(text: str) -> ExtractedField:
+    return _text_field(FieldId.ALCOHOL_CONTENT, text)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("45% Alc./Vol. (90 Proof)", (Decimal(45),)),
+        ("Alc. 45.0 % by vol.", (Decimal("45.0"),)),
+        ("45 percent alcohol by volume", (Decimal(45),)),
+        ("45% / 45.0%", (Decimal(45),)),
+        ("40% and 45%", (Decimal(40), Decimal(45))),
+        ("90 Proof", ()),
+    ],
+)
+def test_parse_percentages(text, expected):
+    assert parse_percentages(text) == expected
+
+
+@pytest.mark.parametrize("printed", ["45%", "45.0% Alc./Vol. (90 Proof)"])
+def test_abv_equal_values_match(printed):
+    result = compare_alcohol_content(_abv("45"), _abv_field(printed))
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.observed_value == printed
+    assert result.evidence[0].image_id == "front"
+    assert compare_alcohol_content(_abv("45.0"), _abv_field("45%")).outcome is (
+        CheckOutcome.MATCH
+    )
+
+
+def test_abv_different_value_is_discrepancy_showing_both():
+    result = compare_alcohol_content(_abv("40"), _abv_field("45% Alc./Vol."))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert "45%" in result.explanation and "40%" in result.explanation
+    assert result.expected_value == _abv("40")
+    assert result.evidence
+
+
+def test_abv_has_no_tolerance():
+    result = compare_alcohol_content(_abv("45"), _abv_field("45.1%"))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+
+
+def test_abv_proof_only_needs_review_even_if_proof_equals_double():
+    result = compare_alcohol_content(_abv("45"), _abv_field("90 Proof"))
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "proof" in result.explanation
+
+
+def test_abv_proof_is_not_checked_against_percentage():
+    result = compare_alcohol_content(_abv("45"), _abv_field("45% (80 Proof)"))
+    assert result.outcome is CheckOutcome.MATCH
+
+
+@pytest.mark.parametrize("printed", ["40% and 45%", "ALCOHOL BY VOLUME"])
+def test_abv_conflicting_or_unparseable_needs_review(printed):
+    result = compare_alcohol_content(_abv("45"), _abv_field(printed))
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+
+
+def test_abv_missing_expected_and_unknown_extraction():
+    assert (
+        compare_alcohol_content(None, _abv_field("45%")).outcome
+        is CheckOutcome.NOT_EVALUATED
+    )
+    assert compare_alcohol_content(_abv("45"), None).outcome is (
+        CheckOutcome.NEEDS_REVIEW
+    )
+    conflicting = ExtractedField(
+        FieldId.ALCOHOL_CONTENT,
+        ExtractionState.CONFLICTING,
+        (Observation("45%", "front"), Observation("40%", "back")),
+        "Images differ.",
+    )
+    result = compare_alcohol_content(_abv("45"), conflicting)
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert len(result.evidence) == 2

@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from decimal import Decimal
 
 from alcohol_label.schemas import (
     CheckId,
@@ -12,6 +13,7 @@ from alcohol_label.schemas import (
     ExtractionState,
     FieldId,
     Measurement,
+    Unit,
 )
 
 _APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'", "`": "'"})
@@ -103,6 +105,61 @@ def compare_producer_name(
     expected: str | None, extracted: ExtractedField | None
 ) -> CheckResult:
     return compare_text(CheckId.PRODUCER_NAME, expected, extracted)
+
+
+_PERCENT = re.compile(r"(\d+(?:\.\d+)?|\.\d+)\s*(?:%|percent\b)", re.IGNORECASE)
+_PROOF = re.compile(r"\bproof\b", re.IGNORECASE)
+
+
+def parse_percentages(text: str) -> tuple[Decimal, ...]:
+    """Distinct percentage figures printed in ``text``, in order of appearance."""
+    return tuple(dict.fromkeys(Decimal(m.group(1)) for m in _PERCENT.finditer(text)))
+
+
+def compare_alcohol_content(
+    expected: Measurement | None, extracted: ExtractedField | None
+) -> CheckResult:
+    """Compare expected ABV with the printed percentage; proof never substitutes."""
+    check = CheckId.ALCOHOL_CONTENT
+    unresolved = unresolved_result(check, expected, extracted)
+    if unresolved is not None:
+        return unresolved
+    assert expected.unit is Unit.PERCENT_ABV
+    raw = extracted.observations[0].raw_text
+    values = parse_percentages(raw)
+    if not values:
+        reason = (
+            "Label gives proof but no percentage; proof is not used as the ABV."
+            if _PROOF.search(raw)
+            else "No percentage could be read from the label text."
+        )
+        return build_result(
+            check, CheckOutcome.NEEDS_REVIEW, expected, extracted, reason
+        )
+    if len(values) > 1:
+        listed = ", ".join(f"{v}%" for v in values)
+        return build_result(
+            check,
+            CheckOutcome.NEEDS_REVIEW,
+            expected,
+            extracted,
+            f"Label text contains differing percentages ({listed}).",
+        )
+    if values[0] == expected.value:
+        return build_result(
+            check,
+            CheckOutcome.MATCH,
+            expected,
+            extracted,
+            f"Printed {values[0]}% equals the expected {expected.value}%.",
+        )
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        expected,
+        extracted,
+        f"Label states {values[0]}%; expected {expected.value}%.",
+    )
 
 
 def build_result(
