@@ -10,9 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
 
     steps:
@@ -39,29 +40,13 @@ jobs:
           poetry export --only main --without-hashes -o runtime-requirements.txt
           pip install --no-cache-dir --target .python_packages/lib/site-packages -r runtime-requirements.txt
 
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-app
-          include-hidden-files: true
-          path: |
-            src
-            .python_packages
-            pyproject.toml
+      # One job avoids artifact storage, which hit its quota on the first run.
+      - name: Assemble deployment package
+        run: |
+          mkdir dist
+          cp -r src .python_packages pyproject.toml dist/
+          find dist -name __pycache__ -type d -prune -exec rm -rf {} +
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -75,4 +60,5 @@ jobs:
         with:
           app-name: 'alcohol-label-staging'
           slot-name: 'Production'
+          package: dist
           
