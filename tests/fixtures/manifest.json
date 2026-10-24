@@ -1,8 +1,8 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.1",
+  "dataset_version": "starter-0.2",
   "notes": [
-    "Starter set of four scenarios built from two synthetic labels. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
+    "Starter set of four scenarios built from two synthetic labels (S01 to S04), extended with scenarios S05 to S15 on seven more synthetic labels that exercise the field comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
     "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
@@ -67,6 +67,216 @@
         "country_of_origin": null,
         "warning_heading": "GOVERNMENT WARNING:",
         "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages affects your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "import-product-of",
+      "file": "labels/import-product-of.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 76413,
+      "sha256": "1a3c474be92eadd147f80fa9b19af06215cf678ca8c39d398837c4bf1001710e",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Origin printed as \"Product of Scotland\"; producer is the U.S. importer."
+      },
+      "visible_text": {
+        "brand": "HIGHLAND REEL",
+        "class_type": "Single Malt Scotch Whisky",
+        "alcohol_content": "43% Alc./Vol. (86 Proof)",
+        "net_contents": "700 mL",
+        "producer_name": "Example Imports",
+        "producer_address": "New York, NY",
+        "country_of_origin": "Product of Scotland",
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "import-no-origin",
+      "file": "labels/import-no-origin.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 72520,
+      "sha256": "5956dd000d7e993a4c19a28c1aedbdee6f3c9375671a7b8562088bcbbb870ac7",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "No country-of-origin statement is printed; only a New York importer address."
+      },
+      "visible_text": {
+        "brand": "HIGHLAND REEL",
+        "class_type": "Single Malt Scotch Whisky",
+        "alcohol_content": "43% Alc./Vol. (86 Proof)",
+        "net_contents": "700 mL",
+        "producer_name": "Example Imports",
+        "producer_address": "New York, NY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "net-metric-and-floz",
+      "file": "labels/net-metric-and-floz.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 76242,
+      "sha256": "27a468216633be8ec04742cdc2eb314a2aa08babf84d038f4d0955a41f2ea4d7",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Net contents show 750 mL / 25.4 FL. OZ."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL / 25.4 FL. OZ.",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "net-floz-only",
+      "file": "labels/net-floz-only.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 73927,
+      "sha256": "80280902319b0bf7773f47f96fc156fef068cc53d82dfc01b7567dfe1c3d1db9",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Only a fluid-ounce statement; no metric statement."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "25.4 FL. OZ.",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "abv-proof-only",
+      "file": "labels/abv-proof-only.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 66908,
+      "sha256": "bec39759ca4b28e29bb1da0823705f47475dde2b20586f2569415a1bed684286",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Alcohol content shows 90 Proof with no percentage."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "90 Proof",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "producer-street",
+      "file": "labels/producer-street.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 75984,
+      "sha256": "18d5867e21bd93a37bcdf71ac938a4f28c08511973c738000dd41bdd7ce8a9a5",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Address line is \"123 Main St, Louisville, KY\" after \"Bottled by Example Distillery\"."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "123 Main St, Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "producer-new-louisville",
+      "file": "labels/producer-new-louisville.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 73954,
+      "sha256": "62b3a3da29762507c409e339357cf12712c1950e611c5058385057eeba3a1a65",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Address line is \"New Louisville, KY\"."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "New Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
       },
       "visible_style": {
         "warning_heading": "bold, uppercase",
@@ -202,6 +412,369 @@
         "producer_address": "match",
         "country_of_origin": "not_applicable",
         "warning_wording": "discrepancy",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S05-import-origin-prefix",
+      "description": "Imported label prints \"Product of Scotland\"; the application says Scotland.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/import-product-of.png"],
+      "application": {
+        "application_id": "S05-import-origin-prefix",
+        "beverage_category": "distilled_spirits",
+        "is_imported": true,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/import-product-of.png"}],
+        "brand": "HIGHLAND REEL",
+        "class_type": "Single Malt Scotch Whisky",
+        "alcohol_content": {"measurement": {"value": "43.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "700", "unit": "ml"}},
+        "producer_name": "Example Imports",
+        "producer_address": "New York, NY",
+        "country_of_origin": "Scotland"
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S06-import-origin-differs",
+      "description": "Imported label prints Scotland; the application says Ireland.",
+      "split": "development",
+      "deliberate_defect": "Application country is Ireland; the label says Product of Scotland.",
+      "image_files": ["labels/import-product-of.png"],
+      "application": {
+        "application_id": "S06-import-origin-differs",
+        "beverage_category": "distilled_spirits",
+        "is_imported": true,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/import-product-of.png"}],
+        "brand": "HIGHLAND REEL",
+        "class_type": "Single Malt Scotch Whisky",
+        "alcohol_content": {"measurement": {"value": "43.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "700", "unit": "ml"}},
+        "producer_name": "Example Imports",
+        "producer_address": "New York, NY",
+        "country_of_origin": "Ireland"
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "discrepancy",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S07-import-origin-not-observed",
+      "description": "Imported product whose supplied image shows only the importer's New York address.",
+      "split": "development",
+      "deliberate_defect": "Origin statement is absent; the importer address must not be used as origin.",
+      "image_files": ["labels/import-no-origin.png"],
+      "application": {
+        "application_id": "S07-import-origin-not-observed",
+        "beverage_category": "distilled_spirits",
+        "is_imported": true,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/import-no-origin.png"}],
+        "brand": "HIGHLAND REEL",
+        "class_type": "Single Malt Scotch Whisky",
+        "alcohol_content": {"measurement": {"value": "43.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "700", "unit": "ml"}},
+        "producer_name": "Example Imports",
+        "producer_address": "New York, NY",
+        "country_of_origin": "Scotland"
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "needs_review",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S08-net-metric-and-floz",
+      "description": "Net contents printed as \"750 mL / 25.4 FL. OZ.\"; the application says 750 mL.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/net-metric-and-floz.png"],
+      "application": {
+        "application_id": "S08-net-metric-and-floz",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/net-metric-and-floz.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S09-net-floz-only",
+      "description": "Net contents printed only in fluid ounces; the application says 750 mL.",
+      "split": "development",
+      "deliberate_defect": "Required metric statement is absent.",
+      "image_files": ["labels/net-floz-only.png"],
+      "application": {
+        "application_id": "S09-net-floz-only",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/net-floz-only.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "needs_review",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S10-net-litres-expected",
+      "description": "Application gives 0.75 L; the label prints 750 mL.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S10-net-litres-expected",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "0.75", "unit": "l"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S11-abv-proof-only",
+      "description": "Alcohol content printed as proof only; the application says 45.0%.",
+      "split": "development",
+      "deliberate_defect": "Percentage is absent; proof must not substitute for it.",
+      "image_files": ["labels/abv-proof-only.png"],
+      "application": {
+        "application_id": "S11-abv-proof-only",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/abv-proof-only.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "needs_review",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S12-address-within-street-line",
+      "description": "Label address is \"123 Main St, Louisville, KY\"; the application says Louisville, KY.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/producer-street.png"],
+      "application": {
+        "application_id": "S12-address-within-street-line",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/producer-street.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S13-address-street-abbreviation",
+      "description": "Label prints \"123 Main St\"; the application spells out Street.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/producer-street.png"],
+      "application": {
+        "application_id": "S13-address-street-abbreviation",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/producer-street.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "123 Main Street, Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S14-address-different-city",
+      "description": "Label address is in Louisville; the application says Bardstown.",
+      "split": "development",
+      "deliberate_defect": "Application address is Bardstown, KY.",
+      "image_files": ["labels/producer-street.png"],
+      "application": {
+        "application_id": "S14-address-different-city",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/producer-street.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "discrepancy",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S15-address-longer-city-name",
+      "description": "Label address is \"New Louisville, KY\"; the application says Louisville, KY.",
+      "split": "development",
+      "deliberate_defect": "Printed city name only contains the expected city.",
+      "image_files": ["labels/producer-new-louisville.png"],
+      "application": {
+        "application_id": "S15-address-longer-city-name",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/producer-new-louisville.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "discrepancy",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
         "warning_heading_case": "match",
         "warning_heading_bold": "match",
         "warning_body_not_bold": "match"
