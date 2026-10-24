@@ -42,6 +42,10 @@ def main() -> None:
         "Scope: English-language U.S. distilled-spirit labels, one application "
         f"at a time, with one or two JPEG/PNG images (up to {MAX_IMAGES})."
     )
+    st.info(
+        "Implemented checks: brand comparison. All other checks are Day 2 scope "
+        "and are shown as not evaluated; they are not a pass."
+    )
 
     st.subheader("Expected application values")
     application_id = st.text_input("Application ID", key="application_id")
