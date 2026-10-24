@@ -77,7 +77,7 @@ Keep credentials outside version control. Document which image data is sent to a
 
     poetry run streamlit run src/alcohol_label/app.py
 
-**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Verification checks remain not evaluated until comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. Verification checks remain not evaluated until comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
 **Sample review:** Four starter scenarios with expected application values,
 expected outcomes and provenance are in

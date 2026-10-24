@@ -118,7 +118,7 @@ These checks do not validate live extraction accuracy or hosted performance. The
 - **Input:** `starter-clear.png` and `starter-warning-changed.png`, passed together as one two-image application to the production adapter.
 - **Provider configuration:** OpenAI Responses API, model `gpt-6-luna`, prompt `label-extraction-v1`, schema `label-observations-v1`.
 - **Observed result:** Both calls completed without processing errors. Ordinary fields were observed, country of origin was missing, and `warning_text` was conflicting across the two images.
-- **Elapsed time:** 14.09 seconds for this single local run.
+- **Elapsed time:** 14.09 seconds for the full local `extract_application` call in this single run. The UI now displays the client-side duration of each individual provider request; those request durations are not total Verify-to-result latency.
 - **Limitations:** This is one smoke measurement, not the prescribed performance sample. It exceeds the five-second target and does not establish p95 performance or general extraction accuracy. More timing/evaluation work remains necessary.
 
 ### AL-6 feasibility spike (2026-10-23)

@@ -6,6 +6,7 @@ import base64
 import json
 import os
 import socket
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
@@ -90,10 +91,24 @@ class ExtractionMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class ExtractionRequestTiming:
+    image_id: str
+    elapsed_seconds: float
+
+
+@dataclass(frozen=True, slots=True)
 class ExtractionResult:
     fields: tuple[ExtractedField, ...]
     errors: tuple[ProcessingError, ...]
     metadata: ExtractionMetadata | None
+    request_timings: tuple[ExtractionRequestTiming, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _ImageExtractionAttempt:
+    fields: dict[FieldId, ExtractedField] | None
+    error: Exception | None
+    elapsed_seconds: float
 
 
 def _load_env_file() -> None:
@@ -218,8 +233,26 @@ def _extract_image(
     image_bytes: bytes,
     image_id: str,
     config: ProviderConfig,
-) -> dict[FieldId, ExtractedField]:
-    return _parse_fields(_call_provider(image_bytes, config), image_id)
+) -> _ImageExtractionAttempt:
+    started = time.perf_counter()
+    try:
+        response = _call_provider(image_bytes, config)
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as error:
+        return _ImageExtractionAttempt(None, error, time.perf_counter() - started)
+    elapsed_seconds = time.perf_counter() - started
+    try:
+        fields = _parse_fields(response, image_id)
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        return _ImageExtractionAttempt(None, error, elapsed_seconds)
+    return _ImageExtractionAttempt(fields, None, elapsed_seconds)
 
 
 def _provider_error(error: Exception, image_id: str) -> ProcessingError:
@@ -328,6 +361,7 @@ def extract_application(
     )
     per_image = []
     errors = []
+    request_timings = []
     with ThreadPoolExecutor(max_workers=len(image_references)) as executor:
         pending = [
             (
@@ -337,18 +371,14 @@ def extract_application(
             for image, image_bytes in zip(image_references, image_data, strict=True)
         ]
         for image_id, future in pending:
-            try:
-                per_image.append(future.result())
-            except (
-                urllib.error.HTTPError,
-                urllib.error.URLError,
-                TimeoutError,
-                OSError,
-                TypeError,
-                ValueError,
-                json.JSONDecodeError,
-            ) as error:
-                errors.append(_provider_error(error, image_id))
+            attempt = future.result()
+            request_timings.append(
+                ExtractionRequestTiming(image_id, attempt.elapsed_seconds)
+            )
+            if attempt.error is not None:
+                errors.append(_provider_error(attempt.error, image_id))
+            elif attempt.fields is not None:
+                per_image.append(attempt.fields)
 
     fields = _aggregate_fields(per_image, len(errors))
-    return ExtractionResult(fields, tuple(errors), metadata)
+    return ExtractionResult(fields, tuple(errors), metadata, tuple(request_timings))

@@ -101,6 +101,8 @@ def test_extract_application_preserves_equal_and_conflicting_image_observations(
     assert [item.image_id for item in class_type.observations] == ["front", "back"]
     assert result.errors == ()
     assert result.metadata.model == "test-model"
+    assert [timing.image_id for timing in result.request_timings] == ["front", "back"]
+    assert all(timing.elapsed_seconds >= 0 for timing in result.request_timings)
 
 
 def test_warning_text_preserves_provider_text_verbatim(monkeypatch):
@@ -145,6 +147,8 @@ def test_provider_failure_preserves_successful_image_observations(monkeypatch):
     ]
     assert result.errors[0].code is ErrorCode.ENDPOINT_BLOCKED
     assert "private provider detail" not in result.errors[0].message
+    assert [timing.image_id for timing in result.request_timings] == ["front", "back"]
+    assert all(timing.elapsed_seconds >= 0 for timing in result.request_timings)
 
 
 def test_url_error_wrapping_socket_timeout_maps_to_provider_timeout(monkeypatch):

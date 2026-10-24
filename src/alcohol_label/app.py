@@ -107,6 +107,12 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
             f"Extraction: {extraction.metadata.provider} / {extraction.metadata.model} "
             f"(prompt {extraction.metadata.prompt_id}, schema {extraction.metadata.schema_id})"
         )
+    if extraction.request_timings:
+        request_latencies = ", ".join(
+            f"{timing.image_id}: {timing.elapsed_seconds:.2f}s"
+            for timing in extraction.request_timings
+        )
+        st.caption(f"OpenAI Responses API request latency: {request_latencies}")
     for error in extraction.errors:
         st.error(error.message)
 
