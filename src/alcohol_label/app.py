@@ -6,7 +6,7 @@ import streamlit as st
 from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
 from alcohol_label.review import review_after_extraction
-from alcohol_label.schemas import CheckOutcome, Unit
+from alcohol_label.schemas import CheckOutcome, Measurement, Unit
 
 _VOLUME_UNITS = {
     "mL": Unit.MILLILITER,
@@ -43,8 +43,10 @@ def main() -> None:
         f"at a time, with one or two JPEG/PNG images (up to {MAX_IMAGES})."
     )
     st.info(
-        "Implemented checks: brand comparison. All other checks are Day 2 scope "
-        "and are shown as not evaluated; they are not a pass."
+        "Implemented checks: brand, class/type, alcohol content, net contents, "
+        "producer name and address, and country of origin for imports. Warning "
+        "checks are not implemented yet and are shown as not evaluated; they are "
+        "not a pass."
     )
 
     st.subheader("Expected application values")
@@ -103,6 +105,15 @@ def main() -> None:
                 _show_review(result.application, uploads)
 
 
+def _display(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, Measurement):
+        unit = {Unit.PERCENT_ABV: "% ABV"}.get(value.unit, f" {value.unit.value}")
+        return f"{value.value}{unit}"
+    return str(value)
+
+
 def _show_review(application, uploads: list[UploadedImage]) -> None:
     extraction = extract_application(
         application.images,
@@ -144,25 +155,25 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         application, extraction.errors, extraction.fields
     )
     results = response.check_results
-    unresolved = sum(r.outcome is CheckOutcome.NOT_EVALUATED for r in results)
+    counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
     if response.all_clear:
         st.success("All supported checks passed.")
     else:
         extraction_status = (
-            "Extraction encountered processing failures."
-            if extraction.errors
-            else "Only the brand comparison is implemented."
+            " Extraction encountered processing failures." if extraction.errors else ""
         )
         st.warning(
-            f"{unresolved} of {len(results)} checks not evaluated. "
-            f"{extraction_status} This is not a pass."
+            f"{counts[CheckOutcome.DISCREPANCY]} discrepancy, "
+            f"{counts[CheckOutcome.NEEDS_REVIEW]} need review, "
+            f"{counts[CheckOutcome.NOT_EVALUATED]} not evaluated of "
+            f"{len(results)} checks.{extraction_status} This is not a pass."
         )
     table = pd.DataFrame(
         {
             "Check": [r.check_id.value.replace("_", " ") for r in results],
             "Status": [r.outcome.value.replace("_", " ") for r in results],
-            "Expected": [r.expected_value or "" for r in results],
-            "Observed": [r.observed_value or "" for r in results],
+            "Expected": [_display(r.expected_value) for r in results],
+            "Observed": [_display(r.observed_value) for r in results],
             "Evidence (image)": [
                 ", ".join(dict.fromkeys(e.image_id for e in r.evidence))
                 for r in results

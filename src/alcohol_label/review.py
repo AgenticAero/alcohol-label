@@ -1,6 +1,14 @@
-"""Check results while field comparison is not implemented."""
+"""Check results: field comparisons after extraction; warning checks not yet run."""
 
-from alcohol_label.comparison import compare_brand
+from alcohol_label.comparison import (
+    compare_alcohol_content,
+    compare_brand,
+    compare_class_type,
+    compare_country_of_origin,
+    compare_net_contents,
+    compare_producer_address,
+    compare_producer_name,
+)
 from alcohol_label.schemas import (
     ApplicationData,
     CheckId,
@@ -11,10 +19,32 @@ from alcohol_label.schemas import (
 )
 
 _NO_EXTRACTION = "Label extraction has not been run, so this check was not run."
-_NO_COMPARISON = "Label fields were extracted, but comparison is not implemented yet."
+_NO_WARNING_CHECKS = (
+    "Warning checks are not implemented yet, so this check was not run."
+)
 _EXTRACTION_FAILED = (
     "Extraction failed for one or more images, so this check was not run."
 )
+
+_COMPARATORS = {
+    CheckId.BRAND: lambda app, field: compare_brand(app.brand, field),
+    CheckId.CLASS_TYPE: lambda app, field: compare_class_type(app.class_type, field),
+    CheckId.ALCOHOL_CONTENT: lambda app, field: compare_alcohol_content(
+        app.alcohol_content, field
+    ),
+    CheckId.NET_CONTENTS: lambda app, field: compare_net_contents(
+        app.net_contents, field
+    ),
+    CheckId.PRODUCER_NAME: lambda app, field: compare_producer_name(
+        app.producer_name, field
+    ),
+    CheckId.PRODUCER_ADDRESS: lambda app, field: compare_producer_address(
+        app.producer_address, field
+    ),
+    CheckId.COUNTRY_OF_ORIGIN: lambda app, field: compare_country_of_origin(
+        app.country_of_origin, field, app.is_imported
+    ),
+}
 
 
 def _field_for(check_id: CheckId) -> FieldId:
@@ -26,7 +56,7 @@ def _field_for(check_id: CheckId) -> FieldId:
 
 def review_without_extraction(application: ApplicationData) -> ReviewResponse:
     """Report every check as not evaluated before extraction."""
-    return _pending_review(application, _NO_EXTRACTION)
+    return _review(application, _NO_EXTRACTION)
 
 
 def review_after_extraction(
@@ -34,34 +64,33 @@ def review_after_extraction(
     processing_errors=(),
     fields=(),
 ) -> ReviewResponse:
-    """Compare brand; every other check stays not evaluated."""
-    pending_reason = _EXTRACTION_FAILED if processing_errors else _NO_COMPARISON
+    """Run the field comparisons; warning checks stay not evaluated.
+
+    Any processing error prevents every comparison.
+    """
+    if processing_errors:
+        return _review(application, _EXTRACTION_FAILED, processing_errors)
     extracted = {f.field_id: f for f in fields}
-    compare = not processing_errors
-    return _pending_review(
-        application,
-        pending_reason,
-        processing_errors,
-        extracted.get(FieldId.BRAND) if compare else None,
-        compare,
-    )
+    return _review(application, _NO_WARNING_CHECKS, (), extracted)
 
 
-def _pending_review(
+def _review(
     application: ApplicationData,
     pending_reason: str,
     processing_errors=(),
-    brand_field=None,
-    compare_brand_check: bool = False,
+    extracted=None,
 ) -> ReviewResponse:
     missing = set(application.missing_required_fields())
     results = []
     for check_id in CheckId:
         field_id = _field_for(check_id)
-        if check_id is CheckId.BRAND and compare_brand_check:
-            results.append(compare_brand(application.brand, brand_field))
+        domestic_origin = (
+            check_id is CheckId.COUNTRY_OF_ORIGIN and not application.is_imported
+        )
+        if extracted is not None and check_id in _COMPARATORS and not domestic_origin:
+            results.append(_COMPARATORS[check_id](application, extracted.get(field_id)))
             continue
-        if check_id is CheckId.COUNTRY_OF_ORIGIN and not application.is_imported:
+        if domestic_origin:
             outcome = CheckOutcome.NOT_APPLICABLE
             reason = "Product is not imported, so country of origin is not required."
         elif field_id in missing:
