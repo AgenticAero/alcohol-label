@@ -1,5 +1,6 @@
 """Streamlit entry point: expected-value form, label upload and Verify."""
 
+import pandas as pd
 import streamlit as st
 
 from alcohol_label.extraction import extract_application
@@ -12,6 +13,7 @@ _VOLUME_UNITS = {
     "L": Unit.LITER,
     "fl oz": Unit.FLUID_OUNCE,
 }
+_STATUS_STYLES = {"match": "color: green", "discrepancy": "color: red"}
 _TEXT_KEYS = (
     "application_id",
     "brand",
@@ -134,7 +136,9 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
             if index < len(extraction.fields) - 1:
                 st.divider()
 
-    response = review_after_extraction(application, extraction.errors)
+    response = review_after_extraction(
+        application, extraction.errors, extraction.fields
+    )
     results = response.check_results
     unresolved = sum(r.outcome is CheckOutcome.NOT_EVALUATED for r in results)
     if response.all_clear:
@@ -143,18 +147,30 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         extraction_status = (
             "Extraction encountered processing failures."
             if extraction.errors
-            else "Comparison is not implemented."
+            else "Only the brand comparison is implemented."
         )
         st.warning(
             f"{unresolved} of {len(results)} checks not evaluated. "
             f"{extraction_status} This is not a pass."
         )
-    st.table(
+    table = pd.DataFrame(
         {
             "Check": [r.check_id.value.replace("_", " ") for r in results],
             "Status": [r.outcome.value.replace("_", " ") for r in results],
-            "Reason": [r.explanation for r in results],
+            "Expected": [r.expected_value or "" for r in results],
+            "Observed": [r.observed_value or "" for r in results],
+            "Evidence (image)": [
+                ", ".join(dict.fromkeys(e.image_id for e in r.evidence))
+                for r in results
+            ],
+            "Reason": [r.explanation or "" for r in results],
         }
+    )
+    st.table(
+        table.style.map(
+            lambda status: _STATUS_STYLES.get(status, ""),
+            subset=["Status"],
+        )
     )
 
 

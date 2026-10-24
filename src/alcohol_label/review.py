@@ -1,5 +1,6 @@
 """Check results while field comparison is not implemented."""
 
+from alcohol_label.comparison import compare_brand
 from alcohol_label.schemas import (
     ApplicationData,
     CheckId,
@@ -31,21 +32,35 @@ def review_without_extraction(application: ApplicationData) -> ReviewResponse:
 def review_after_extraction(
     application: ApplicationData,
     processing_errors=(),
+    fields=(),
 ) -> ReviewResponse:
-    """Keep checks unresolved after extraction until comparison is implemented."""
+    """Compare brand; every other check stays not evaluated."""
     pending_reason = _EXTRACTION_FAILED if processing_errors else _NO_COMPARISON
-    return _pending_review(application, pending_reason, processing_errors)
+    extracted = {f.field_id: f for f in fields}
+    compare = not processing_errors
+    return _pending_review(
+        application,
+        pending_reason,
+        processing_errors,
+        extracted.get(FieldId.BRAND) if compare else None,
+        compare,
+    )
 
 
 def _pending_review(
     application: ApplicationData,
     pending_reason: str,
     processing_errors=(),
+    brand_field=None,
+    compare_brand_check: bool = False,
 ) -> ReviewResponse:
     missing = set(application.missing_required_fields())
     results = []
     for check_id in CheckId:
         field_id = _field_for(check_id)
+        if check_id is CheckId.BRAND and compare_brand_check:
+            results.append(compare_brand(application.brand, brand_field))
+            continue
         if check_id is CheckId.COUNTRY_OF_ORIGIN and not application.is_imported:
             outcome = CheckOutcome.NOT_APPLICABLE
             reason = "Product is not imported, so country of origin is not required."
