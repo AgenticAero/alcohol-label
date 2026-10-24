@@ -136,6 +136,12 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Hosted check:** text-only call from the Azure App Service B1 host returned HTTP 200 in 4.13 s. No image extraction was run on the host.
 - **Limits:** Few attempts; warm and cached conditions; client was the developer's machine, not the deployed app; cost not measured. This does not establish accuracy on other layouts, photographed labels or the five-second target.
 
+### AL-10 deployed smoke check (2026-10-24)
+
+- **Deployed revision:** `e4c8acb` on `main`, https://alcohol-label-staging.azurewebsites.net, Azure App Service B1 (Central US).
+- **Result:** In a fresh browser session a real extraction and brand comparison ran end to end: brand match, brand discrepancy and the implemented-checks notice all worked.
+- **Latency observed:** OpenAI Responses API request latency was over 5 s on the first run and 3.98 s on the second. Exact first-run value, sample size and input images were not recorded, so this is anecdotal and does not support the five-second target; the hosted performance evaluation is still pending.
+
 ### Run context
 
 | Item | Recorded value |
