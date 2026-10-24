@@ -2,9 +2,9 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** AL-8 extraction is implemented locally with offline tests. Live extraction accuracy, comparison behavior and hosted performance remain unevaluated.
+**Status:** AL-8 extraction and the AL-9 brand comparison are implemented and deployed to staging (AL-10). All other checks are not evaluated. Live extraction accuracy beyond the starter checks and hosted performance remain unevaluated.
 
-**Deployed application:** Pending deployment.
+**Deployed application:** https://alcohol-label-staging.azurewebsites.net (Azure App Service B1; the first request after idle can take over a minute).
 
 ## Project overview
 
@@ -52,8 +52,8 @@ Python and Poetry are the selected runtime and dependency-management foundation.
 | Poetry version | 2.2.1 (verified with `poetry --version`) |
 | UI framework | Streamlit |
 | Extraction provider/model | OpenAI Responses API; `OPENAI_MODEL` defaults to `gpt-6-luna` |
-| Hosting platform | Pending selection |
-| Native dependencies and required network endpoints | Pending confirmation |
+| Hosting platform | Azure App Service Linux B1, Python 3.11, Central US |
+| Native dependencies and required network endpoints | No native dependencies. The host needs outbound HTTPS to `api.openai.com`. |
 
 Actual tools and AI assistance are documented in [Tool use](docs/tool-use.md).
 
@@ -77,7 +77,7 @@ Keep credentials outside version control. Document which image data is sent to a
 
     poetry run streamlit run src/alcohol_label/app.py
 
-**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. Verification checks remain not evaluated until comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand check is compared and explained; all other checks remain not evaluated until their comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
 **Sample review:** Four starter scenarios with expected application values,
 expected outcomes and provenance are in
@@ -125,12 +125,16 @@ Keep tests that require live credentials separate from offline rule/parsing test
 
 | Item | Value |
 | --- | --- |
-| Application URL | Pending deployment |
-| Evaluator access instructions | Pending confirmation |
-| Deployed commit/release | Not recorded |
-| Fresh-session access check | Not performed |
+| Application URL | https://alcohol-label-staging.azurewebsites.net |
+| Evaluator access instructions | Open the URL in any browser; no login. Enter the expected values, upload one or two JPEG/PNG label images, and select **Verify**. Only the brand comparison is implemented; other checks show as not evaluated (Day 2 scope). |
+| Deployed commit/release | `e4c8acb` on `main` (merge of PR #13, 2026-10-24) |
+| Fresh-session access check | Passed 2026-10-24 by the developer in a fresh browser session: brand match, brand discrepancy and the implemented-checks notice all worked. OpenAI Responses API request latency was over 5 s on the first run and 3.98 s on the second; this is not a performance evaluation. |
 
-Record deployment configuration and any cold-start or availability limitations once the hosting path is selected. Verify that the evaluator can access both the application and source repository.
+**How it is deployed.** `.github/workflows/main_alcohol-label-staging.yml` runs on pushes to `main` and manual dispatch. In one job it runs ruff and pytest, vendors runtime dependencies from `poetry.lock` into `.python_packages` (no server-side Oryx build, so `SCM_DO_BUILD_DURING_DEPLOYMENT` is unset), and deploys `src`, `.python_packages` and `pyproject.toml`. The last run took 4m17s. The startup command sets `PYTHONPATH` to `.python_packages` and `src` and runs Streamlit on port 8000. `OPENAI_API_KEY`, `OPENAI_MODEL` and `OPENAI_REASONING_EFFORT` are App Service application settings only.
+
+**Known limitations.** Azure Login uses a federated credential, so deploys run only from `main`. A single-job workflow is used because the repository hit its Actions artifact storage quota. An app that previously had an Oryx build must have `oryx-manifest.toml` and `output.tar.zst` removed from `wwwroot`, or its startup script runs the stale build output.
+
+Verify that the evaluator can access both the application and source repository.
 
 ## Documentation and delivery tracking
 
