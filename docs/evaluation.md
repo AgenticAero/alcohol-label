@@ -93,7 +93,25 @@ Batch throughput and queue delay require separate measurement if batch support i
 
 ## 5. Actual results
 
-**No evaluation runs recorded.** The AL-6 spike below is feasibility evidence, not an evaluation run, and the tables after it are placeholders. Use “Not run,” “Blocked” or “Not measured” rather than zero where evidence is absent.
+**No live extraction accuracy or performance evaluation recorded.** The AL-6 spike below is feasibility evidence, not an AL-8 evaluation run. Use “Not run,” “Blocked” or “Not measured” rather than zero where evidence is absent.
+
+### AL-8 offline implementation checks (2026-10-23)
+
+| Command | Result | Scope |
+| --- | --- | --- |
+| `poetry run pytest` | 124 passed, 0 failed, 0 skipped | Offline suite; includes mocked provider contract, response parsing, multi-image aggregation and failure mapping. |
+| `poetry run ruff check .` | Passed | Repository lint. |
+| `poetry run ruff format --check .` | Passed; 20 files formatted | Repository formatting check. |
+
+These checks do not validate live extraction accuracy or hosted performance. The single-image adapter smoke result below is separate; evaluate both distinct starter images before making accuracy claims.
+
+### AL-8 live adapter smoke check (2026-10-23)
+
+- **Input:** `starter-clear.png` from the synthetic development fixtures; one adapter call, not a browser workflow or benchmark.
+- **Provider configuration:** OpenAI Responses API, model `gpt-6-luna`, prompt `label-extraction-v1`, schema `label-observations-v1`.
+- **Observed result:** No processing error. Seven fields were `observed`; `country_of_origin` was `missing`, matching the fixture annotation. The warning was returned as raw `warning_text`.
+- **Failure diagnosed and corrected:** A blank `OPENAI_BASE_URL` in the local environment overrode the default, producing the relative URL `/responses`. Blank values now use `https://api.openai.com/v1`; an offline regression test covers this.
+- **Limitations:** Latency was not measured. This single adapter smoke call does not establish accuracy, UI behavior, hosted performance, or the AL-8 requirement to evaluate both distinct starter images.
 
 ### AL-6 feasibility spike (2026-10-23)
 

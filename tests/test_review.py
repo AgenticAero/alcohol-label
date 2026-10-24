@@ -3,11 +3,18 @@ from io import BytesIO
 from PIL import Image
 
 from alcohol_label.intake import UploadedImage, build_application
-from alcohol_label.review import review_without_extraction
-from alcohol_label.schemas import CheckId, CheckOutcome, Unit
+from alcohol_label.review import review_after_extraction, review_without_extraction
+from alcohol_label.schemas import (
+    CheckId,
+    CheckOutcome,
+    ErrorCode,
+    ProcessingError,
+    ProcessingStage,
+    Unit,
+)
 
 
-def _review(**overrides):
+def _application(**overrides):
     buffer = BytesIO()
     Image.new("RGB", (8, 8)).save(buffer, format="PNG")
     values = {
@@ -24,7 +31,11 @@ def _review(**overrides):
         "uploads": [UploadedImage("front.png", buffer.getvalue())],
     }
     values.update(overrides)
-    application = build_application(**values).application
+    return build_application(**values).application
+
+
+def _review(**overrides):
+    application = _application(**overrides)
     response = review_without_extraction(application)
     return {r.check_id: r for r in response.check_results}, response
 
@@ -50,4 +61,28 @@ def test_country_not_applicable_for_domestic_but_unresolved_for_import():
     country = imported[CheckId.COUNTRY_OF_ORIGIN]
     assert country.outcome is CheckOutcome.NOT_EVALUATED
     assert "not supplied" in country.explanation
+    assert not response.all_clear
+
+
+def test_review_after_extraction_keeps_checks_unresolved_and_errors_separate():
+    application = _application()
+    processing_error = ProcessingError(
+        ProcessingStage.EXTRACTION,
+        ErrorCode.PROVIDER_TIMEOUT,
+        "Provider timed out.",
+        True,
+    )
+
+    response = review_after_extraction(application, (processing_error,))
+
+    assert all(
+        result.outcome is not CheckOutcome.MATCH for result in response.check_results
+    )
+    assert all(
+        "Extraction failed" in result.explanation
+        for result in response.check_results
+        if result.outcome is CheckOutcome.NOT_EVALUATED
+        and result.check_id is not CheckId.COUNTRY_OF_ORIGIN
+    )
+    assert response.processing_errors == (processing_error,)
     assert not response.all_clear

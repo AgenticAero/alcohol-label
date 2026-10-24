@@ -1,4 +1,4 @@
-"""Check results for a review that has no label extraction yet."""
+"""Check results while field comparison is not implemented."""
 
 from alcohol_label.schemas import (
     ApplicationData,
@@ -9,7 +9,11 @@ from alcohol_label.schemas import (
     ReviewResponse,
 )
 
-_PENDING = "Label extraction is not implemented yet, so this check was not run."
+_NO_EXTRACTION = "Label extraction has not been run, so this check was not run."
+_NO_COMPARISON = "Label fields were extracted, but comparison is not implemented yet."
+_EXTRACTION_FAILED = (
+    "Extraction failed for one or more images, so this check was not run."
+)
 
 
 def _field_for(check_id: CheckId) -> FieldId:
@@ -20,7 +24,24 @@ def _field_for(check_id: CheckId) -> FieldId:
 
 
 def review_without_extraction(application: ApplicationData) -> ReviewResponse:
-    """Report every check as not evaluated; only a domestic country check is not applicable."""
+    """Report every check as not evaluated before extraction."""
+    return _pending_review(application, _NO_EXTRACTION)
+
+
+def review_after_extraction(
+    application: ApplicationData,
+    processing_errors=(),
+) -> ReviewResponse:
+    """Keep checks unresolved after extraction until comparison is implemented."""
+    pending_reason = _EXTRACTION_FAILED if processing_errors else _NO_COMPARISON
+    return _pending_review(application, pending_reason, processing_errors)
+
+
+def _pending_review(
+    application: ApplicationData,
+    pending_reason: str,
+    processing_errors=(),
+) -> ReviewResponse:
     missing = set(application.missing_required_fields())
     results = []
     for check_id in CheckId:
@@ -33,7 +54,7 @@ def review_without_extraction(application: ApplicationData) -> ReviewResponse:
             reason = f"Expected {field_id.value.replace('_', ' ')} was not supplied."
         else:
             outcome = CheckOutcome.NOT_EVALUATED
-            reason = _PENDING
+            reason = pending_reason
         results.append(
             CheckResult(
                 check_id=check_id,
@@ -42,4 +63,8 @@ def review_without_extraction(application: ApplicationData) -> ReviewResponse:
                 explanation=reason,
             )
         )
-    return ReviewResponse(application.application_id, tuple(results))
+    return ReviewResponse(
+        application.application_id,
+        tuple(results),
+        tuple(processing_errors),
+    )

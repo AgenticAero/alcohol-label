@@ -122,6 +122,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** Spike runs recorded in [evaluation.md](evaluation.md); `poetry run ruff check scripts` and `ruff format --check scripts` passed; hosted call returned HTTP 200 in 4.13 s.
 - **Pending checks / limitations:** Not a live evaluation: few attempts, no held-out images, no negative bold example, no cost measurement. The check app and Azure resources are temporary.
 
+### 2026-10-23 — AL-8 image-only extraction implementation
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded. OpenAI Responses API adapter implemented from the AL-6 spike pattern; no provider SDK dependency added.
+- **Purpose:** Extract structured, image-linked observations for one application's supplied label images while preserving raw text, uncertainty, conflicts and processing failures.
+- **Inputs:** Live AL-8 acceptance criteria, AL-6 provider decision and spike, existing schemas/intake/review path, starter fixture manifest, and repository instructions.
+- **Output used:** `src/alcohol_label/extraction.py`, Verify integration and pending-review behavior, equal-observation schema update, focused extraction/review/schema tests, and setup/architecture/evaluation documentation.
+- **Human review / changes:** User confirmed the AL-6 merged PR indicator referred to AL-7. The implementation does not send expected application values to the provider and does not implement comparisons or visual-style checks.
+- **Checks performed:** `poetry run pytest` (124 passed, 0 failed, 0 skipped); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); one live adapter smoke call on `starter-clear.png` returned seven observed fields and country of origin missing. It exposed a blank `OPENAI_BASE_URL` fallback bug, which was fixed and covered offline.
+- **Pending checks / limitations:** The smoke call was not timed and does not establish accuracy; live extraction on the second distinct starter image, a manual browser check, and hosted performance evaluation remain pending. Rotate the local credential if it is the same value surfaced in the earlier diagnostic output.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.

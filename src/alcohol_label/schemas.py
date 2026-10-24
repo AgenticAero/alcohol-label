@@ -242,8 +242,14 @@ class ExtractedField:
         if not isinstance(self.state, ExtractionState):
             raise TypeError("state must be an ExtractionState")
         count = len(self.observations)
-        if self.state is ExtractionState.OBSERVED and count != 1:
-            raise ValueError("observed requires exactly one observation")
+        if self.state is ExtractionState.OBSERVED and (
+            count < 1
+            or len({o.raw_text for o in self.observations}) != 1
+            or len({o.image_id for o in self.observations}) != count
+        ):
+            raise ValueError(
+                "observed requires equal readings from distinct source images"
+            )
         if self.state is ExtractionState.MISSING and count != 0:
             raise ValueError("missing must have no observations")
         if self.state is ExtractionState.CONFLICTING and (

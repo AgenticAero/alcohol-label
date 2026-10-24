@@ -117,7 +117,7 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 - `ExtractedField(field_id, state, observations, explanation)`; each `Observation` has verbatim `raw_text`, `image_id`, optional `parsed_value` (`str | Decimal | Measurement | None`) and optional `EvidenceLocation`. Raw text is never normalized; parsing is a separate, later step.
 - `image_id` matches `ImageReference.image_id`. Images are not classified as front/back. Checking that an ID belongs to the supplied images is left to the verification boundary.
 - `EvidenceLocation` is a normalized `BoundingBox` (fractions 0 to 1 of image width/height), a `crop_ref` string, or both.
-- State rules: `observed` has exactly one observation; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
+- State rules: `observed` has one or more observations with identical raw text from distinct images; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
 - Boldness observations remain a separate later structure; a warning transcription cannot establish font weight.
 
 `CheckResult` records one check outcome; it neither extracts nor compares. Decisions:
@@ -162,7 +162,9 @@ Intake (AL-7), in `src/alcohol_label/intake.py`, `review.py` and `app.py`. Decis
 - Streamlit and Pillow are runtime dependencies: Streamlit serves the UI, and Pillow decodes uploads to validate and preview them. Pillow is therefore deployed, not dev-only.
 - Form strings become `ApplicationData` in a UI-independent module. Blank text is `None`; a non-numeric, zero, negative or non-finite ABV or net-contents value is a readable error, not an exception. Blank required values are not errors; they surface through `missing_required_fields()`.
 - Uploads accept one or two JPEG/PNG files of at most 10 MiB and 20 megapixels that decode with Pillow. They become `ImageReference` records with generated IDs `image-1` and `image-2` and the file name as `uri`; no bytes are stored. Any upload error blocks Verify.
-- Until extraction exists (AL-8), `review_without_extraction` reports all 11 checks as `not_evaluated`, with the missing value named in the reason. Country of origin for a domestic product is `not_applicable`. The UI leads with `all_clear` and an explicit "not a pass" banner and does not display `ReviewResponse.status`, because `complete` means every check has a result, not that any was evaluated.
+- AL-8's image-only extraction adapter uses the OpenAI Responses API with strict structured output and `store: false`. It receives image references and bytes, never `ApplicationData` or expected values. Provider/model/prompt/schema identifiers accompany extraction results; provider failures use `ProcessingError`.
+- The Verify path displays extracted raw text, extraction state and source image ID. Until comparison is implemented, `review_after_extraction` keeps checks `not_evaluated` (except domestic country of origin, which is `not_applicable`), includes processing errors separately, and never reports extraction alone as a pass. The UI does not display `ReviewResponse.status`, because `complete` means every check has a result, not that any was evaluated.
+- Real extraction and hosted performance remain separate evaluation gates. Offline adapter tests do not establish extraction accuracy; see [evaluation.md](evaluation.md).
 
 #### Shared identifiers and states
 
