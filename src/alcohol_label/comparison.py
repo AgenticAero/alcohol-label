@@ -62,13 +62,14 @@ def unresolved_result(
     return None
 
 
-def compare_brand(
-    expected: str | None, extracted: ExtractedField | None
+def compare_text(
+    check_id: CheckId, expected: str | None, extracted: ExtractedField | None
 ) -> CheckResult:
-    """Compare the expected brand with the extracted brand; never fuzzy-match."""
-    unresolved = unresolved_result(CheckId.BRAND, expected, extracted)
+    """Compare a text field after brand-style normalization; never fuzzy-match."""
+    unresolved = unresolved_result(check_id, expected, extracted)
     if unresolved is not None:
         return unresolved
+    name = _field_name(check_id)
     observed = extracted.observations[0].raw_text
     if normalize_brand(expected) == normalize_brand(observed):
         note = (
@@ -76,16 +77,32 @@ def compare_brand(
             if expected == observed
             else "Matches after case, whitespace and apostrophe normalization."
         )
-        return build_result(
-            CheckId.BRAND, CheckOutcome.MATCH, expected, extracted, note
-        )
+        return build_result(check_id, CheckOutcome.MATCH, expected, extracted, note)
     return build_result(
-        CheckId.BRAND,
+        check_id,
         CheckOutcome.DISCREPANCY,
         expected,
         extracted,
-        "Label brand differs from the expected brand after normalization.",
+        f"Label {name} differs from the expected {name} after normalization.",
     )
+
+
+def compare_brand(
+    expected: str | None, extracted: ExtractedField | None
+) -> CheckResult:
+    return compare_text(CheckId.BRAND, expected, extracted)
+
+
+def compare_class_type(
+    expected: str | None, extracted: ExtractedField | None
+) -> CheckResult:
+    return compare_text(CheckId.CLASS_TYPE, expected, extracted)
+
+
+def compare_producer_name(
+    expected: str | None, extracted: ExtractedField | None
+) -> CheckResult:
+    return compare_text(CheckId.PRODUCER_NAME, expected, extracted)
 
 
 def build_result(
