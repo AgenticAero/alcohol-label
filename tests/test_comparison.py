@@ -44,3 +44,40 @@ def test_unknown_extraction_needs_review():
     missing = ExtractedField(FieldId.BRAND, ExtractionState.MISSING, (), "Not found.")
     assert compare_brand("Stone's Throw", missing).outcome is CheckOutcome.NEEDS_REVIEW
     assert compare_brand("Stone's Throw", None).outcome is CheckOutcome.NEEDS_REVIEW
+
+
+def test_shared_helpers_serve_other_checks():
+    from alcohol_label.comparison import build_result, unresolved_result
+    from alcohol_label.schemas import CheckId, EvidenceRef
+
+    assert (
+        unresolved_result(CheckId.CLASS_TYPE, None, None).outcome
+        is CheckOutcome.NOT_EVALUATED
+    )
+    absent = unresolved_result(CheckId.CLASS_TYPE, "Bourbon", None)
+    assert absent.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "class type" in absent.explanation
+
+    conflicting = ExtractedField(
+        FieldId.CLASS_TYPE,
+        ExtractionState.CONFLICTING,
+        (Observation("Rye", "front"), Observation("Bourbon", "back")),
+        "Images differ.",
+    )
+    result = unresolved_result(CheckId.CLASS_TYPE, "Bourbon", conflicting)
+    assert result.field_id is FieldId.CLASS_TYPE
+    assert result.evidence == (
+        EvidenceRef(FieldId.CLASS_TYPE, 0, "front"),
+        EvidenceRef(FieldId.CLASS_TYPE, 1, "back"),
+    )
+
+    observed = ExtractedField(
+        FieldId.CLASS_TYPE, ExtractionState.OBSERVED, (Observation("Bourbon", "front"),)
+    )
+    assert unresolved_result(CheckId.CLASS_TYPE, "Bourbon", observed) is None
+    assert (
+        build_result(CheckId.CLASS_TYPE, CheckOutcome.MATCH, "Bourbon", observed, None)
+        .evidence[0]
+        .image_id
+        == "front"
+    )
