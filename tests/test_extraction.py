@@ -236,11 +236,12 @@ def test_image_reference_and_payload_counts_must_match():
 
 
 def test_instructions_ask_for_separate_producer_name_and_address():
-    assert extraction._PROMPT_ID == "label-extraction-v2"
+    assert extraction._PROMPT_ID == "label-extraction-v3"
     text = extraction._INSTRUCTIONS
     assert "producer_name" in text and "producer_address" in text
     assert "without the role phrase" in text
     assert "'uncertain'" in text
+    assert "never infer it from an address" in text
     assert "properties" not in text and "expected" not in text.lower()
 
 
@@ -272,7 +273,7 @@ def test_split_producer_line_is_observed_per_field(monkeypatch):
     )
     assert fields[FieldId.PRODUCER_ADDRESS].state is ExtractionState.OBSERVED
     assert fields[FieldId.PRODUCER_ADDRESS].observations[0].raw_text == "Louisville, KY"
-    assert result.metadata.prompt_id == "label-extraction-v2"
+    assert result.metadata.prompt_id == "label-extraction-v3"
 
 
 def test_unsplittable_producer_line_stays_uncertain_with_partial_reading(

@@ -266,6 +266,131 @@ def compare_net_contents(
     )
 
 
+_STREET_TYPES = {
+    "st": "street",
+    "ave": "avenue",
+    "rd": "road",
+    "blvd": "boulevard",
+    "dr": "drive",
+    "ln": "lane",
+    "ct": "court",
+    "hwy": "highway",
+    "pkwy": "parkway",
+    "pl": "place",
+}
+
+
+def normalize_address(text: str) -> str:
+    """Brand normalization, periods dropped, street-type abbreviations spelled out."""
+    text = normalize_brand(text).replace(".", "")
+    return re.sub(r"\w+", lambda m: _STREET_TYPES.get(m.group(), m.group()), text)
+
+
+def _contains_phrase(haystack: str, needle: str) -> bool:
+    """Whole-phrase containment; letters, digits and hyphens do not bound a phrase."""
+    return bool(re.search(rf"(?<![\w-]){re.escape(needle)}(?![\w-])", haystack))
+
+
+def _contains_segments(haystack: str, needle: str) -> bool:
+    """True when the comma-separated segments of needle are a consecutive run."""
+    hay = [p.strip() for p in haystack.split(",") if p.strip()]
+    want = [p.strip() for p in needle.split(",") if p.strip()]
+    return any(hay[i : i + len(want)] == want for i in range(len(hay) - len(want) + 1))
+
+
+def compare_producer_address(
+    expected: str | None, extracted: ExtractedField | None
+) -> CheckResult:
+    """Match when the expected address equals, or is a whole comma-separated run of, the printed one."""
+    check = CheckId.PRODUCER_ADDRESS
+    unresolved = unresolved_result(check, expected, extracted)
+    if unresolved is not None:
+        return unresolved
+    raw = extracted.observations[0].raw_text
+    want, seen = normalize_address(expected), normalize_address(raw)
+    if want == seen:
+        note = (
+            None
+            if expected == raw
+            else "Matches after case, whitespace, period and street-type normalization."
+        )
+        return build_result(check, CheckOutcome.MATCH, expected, extracted, note)
+    if _contains_segments(seen, want):
+        return build_result(
+            check,
+            CheckOutcome.MATCH,
+            expected,
+            extracted,
+            "Expected address appears within the printed address.",
+        )
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        expected,
+        extracted,
+        "Label address differs from the expected address after normalization.",
+    )
+
+
+_ORIGIN_PHRASE = re.compile(
+    r"\s*(?:product\s+of|produce\s+of|made\s+in)\s+", re.IGNORECASE
+)
+
+
+def strip_origin_phrase(text: str) -> str:
+    """Remove one recognized phrase at the very start; leave other text untouched."""
+    m = _ORIGIN_PHRASE.match(text)
+    if m and text[m.end() :].strip():
+        return text[m.end() :]
+    return text
+
+
+def compare_country_of_origin(
+    expected: str | None, extracted: ExtractedField | None, is_imported: bool
+) -> CheckResult:
+    """Imports only; origin is never inferred from an address or other wording."""
+    check = CheckId.COUNTRY_OF_ORIGIN
+    if not is_imported:
+        return build_result(
+            check,
+            CheckOutcome.NOT_APPLICABLE,
+            expected,
+            extracted,
+            "Product is not imported, so country of origin is not required.",
+        )
+    if expected is not None and (
+        extracted is None or extracted.state is ExtractionState.MISSING
+    ):
+        return build_result(
+            check,
+            CheckOutcome.NEEDS_REVIEW,
+            expected,
+            extracted,
+            "Country of origin was not observed in the supplied images; "
+            "additional evidence is needed.",
+        )
+    unresolved = unresolved_result(check, expected, extracted)
+    if unresolved is not None:
+        return unresolved
+    raw = extracted.observations[0].raw_text
+    value = strip_origin_phrase(raw)
+    shown = f'Observed "{raw}" read as "{value.strip()}"'
+    if normalize_brand(expected) == normalize_brand(value):
+        note = (
+            None
+            if expected == raw
+            else f"{shown}; matches after phrase, case and whitespace normalization."
+        )
+        return build_result(check, CheckOutcome.MATCH, expected, extracted, note)
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        expected,
+        extracted,
+        f'{shown}; differs from the expected "{expected}".',
+    )
+
+
 def build_result(
     check_id: CheckId,
     outcome: CheckOutcome,

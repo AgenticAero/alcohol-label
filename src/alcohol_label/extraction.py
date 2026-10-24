@@ -28,7 +28,7 @@ from alcohol_label.schemas import (
     ProcessingStage,
 )
 
-_PROMPT_ID = "label-extraction-v2"
+_PROMPT_ID = "label-extraction-v3"
 _SCHEMA_ID = "label-observations-v1"
 _TIMEOUT_SECONDS = 60
 _FIELDS = tuple(FieldId)
@@ -60,7 +60,10 @@ _INSTRUCTIONS = (
     "'Produced by'): 'Bottled by Example Distillery, Louisville, KY' gives "
     "producer_name 'Example Distillery' and producer_address 'Louisville, KY'. "
     "If the name and address cannot be separated reliably, use state "
-    "'uncertain' and return the printed line as the partial raw reading."
+    "'uncertain' and return the printed line as the partial raw reading. "
+    "Return country_of_origin only from an explicit origin statement such as "
+    "'Product of Scotland'; never infer it from an address, and use state "
+    "'missing' when no such statement is visible."
 )
 
 

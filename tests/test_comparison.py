@@ -6,10 +6,13 @@ from alcohol_label.comparison import (
     compare_alcohol_content,
     compare_brand,
     compare_class_type,
+    compare_country_of_origin,
     compare_net_contents,
+    compare_producer_address,
     compare_producer_name,
     parse_percentages,
     parse_volumes,
+    strip_origin_phrase,
 )
 from alcohol_label.schemas import (
     CheckOutcome,
@@ -312,4 +315,175 @@ def test_net_contents_missing_expected_and_unknown_extraction():
     )
     assert compare_net_contents(_volume("750"), None).outcome is (
         CheckOutcome.NEEDS_REVIEW
+    )
+
+
+def _address(text: str) -> ExtractedField:
+    return _text_field(FieldId.PRODUCER_ADDRESS, text)
+
+
+def _origin(text: str) -> ExtractedField:
+    return _text_field(FieldId.COUNTRY_OF_ORIGIN, text)
+
+
+def test_address_equal_after_normalization_matches():
+    result = compare_producer_address("Louisville, KY", _address("LOUISVILLE,  KY"))
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.evidence[0].image_id == "front"
+
+
+def test_address_clear_difference_is_discrepancy_with_both_values():
+    result = compare_producer_address("Louisville, KY", _address("Bardstown, KY"))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert (result.expected_value, result.observed_value) == (
+        "Louisville, KY",
+        "Bardstown, KY",
+    )
+    assert result.evidence
+
+
+def test_address_appears_within_longer_printed_address_matches():
+    full = _address("123 Main St, Louisville, KY")
+    result = compare_producer_address("Louisville, KY", full)
+    assert result.outcome is CheckOutcome.MATCH
+    assert "within" in result.explanation
+    assert result.observed_value == "123 Main St, Louisville, KY"
+
+
+def test_address_containment_needs_whole_comma_segments_and_is_one_directional():
+    assert (
+        compare_producer_address(
+            "Louisville, KY", _address("New Louisville, KY")
+        ).outcome
+        is CheckOutcome.DISCREPANCY
+    )
+    assert (
+        compare_producer_address(
+            "Louisville, KY", _address("123 Main St Louisville, KY")
+        ).outcome
+        is CheckOutcome.DISCREPANCY
+    )
+    assert (
+        compare_producer_address("Louisville, KY", _address("Louisville, KYX")).outcome
+        is CheckOutcome.DISCREPANCY
+    )
+    assert (
+        compare_producer_address(
+            "123 Main St, Louisville, KY", _address("Louisville, KY")
+        ).outcome
+        is CheckOutcome.DISCREPANCY
+    )
+
+
+@pytest.mark.parametrize(
+    ("expected", "printed"),
+    [
+        ("123 Main Street", "123 Main St."),
+        ("123 Main St", "123 MAIN STREET"),
+        ("45 Oak Ave., Bardstown, KY", "45 Oak Avenue, Bardstown, KY"),
+    ],
+)
+def test_address_street_type_abbreviations_match(expected, printed):
+    result = compare_producer_address(expected, _address(printed))
+    assert result.outcome is CheckOutcome.MATCH
+    assert "street-type" in result.explanation
+
+
+def test_address_other_abbreviations_are_not_expanded():
+    assert (
+        compare_producer_address(
+            "Louisville, Kentucky", _address("Louisville, KY")
+        ).outcome
+        is CheckOutcome.DISCREPANCY
+    )
+
+
+def test_address_not_isolated_needs_review():
+    combined = ExtractedField(
+        FieldId.PRODUCER_ADDRESS,
+        ExtractionState.UNCERTAIN,
+        (Observation("BOTTLED BY EXAMPLE DISTILLERY LOUISVILLE KY", "front"),),
+        "Name and address could not be separated.",
+    )
+    result = compare_producer_address("Louisville, KY", combined)
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert result.evidence
+    assert (
+        compare_producer_address(None, _address("Louisville, KY")).outcome
+        is CheckOutcome.NOT_EVALUATED
+    )
+
+
+@pytest.mark.parametrize(
+    "printed",
+    ["Scotland", "Product of Scotland", "PRODUCE OF  SCOTLAND", "Made in Scotland"],
+)
+def test_origin_matches_with_recognized_leading_phrase(printed):
+    result = compare_country_of_origin("Scotland", _origin(printed), True)
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.observed_value == printed
+    if printed != "Scotland":
+        assert f'"{printed}"' in result.explanation
+        assert '"SCOTLAND"' in result.explanation.upper()
+
+
+@pytest.mark.parametrize(
+    "printed",
+    [
+        "Bottled in Scotland",
+        "Example Distillery, 1 High St, Speyside, Scotland",
+        "Scotland-inspired",
+        "Product of",
+        "Ireland",
+        "Product of Ireland",
+    ],
+)
+def test_origin_differing_or_non_origin_text_is_a_discrepancy(printed):
+    result = compare_country_of_origin("Scotland", _origin(printed), True)
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert result.evidence
+
+
+def test_origin_not_observed_for_import_needs_review_requesting_evidence():
+    missing = ExtractedField(
+        FieldId.COUNTRY_OF_ORIGIN, ExtractionState.MISSING, (), "No reading."
+    )
+    for extracted in (missing, None):
+        result = compare_country_of_origin("Scotland", extracted, True)
+        assert result.outcome is CheckOutcome.NEEDS_REVIEW
+        assert "additional evidence" in result.explanation
+
+
+def test_origin_phrase_removal_is_limited_to_the_start_of_the_text():
+    assert strip_origin_phrase("Scotland Product of") == "Scotland Product of"
+    assert strip_origin_phrase("Product of Scotland") == "Scotland"
+
+
+def test_origin_domestic_is_not_applicable_even_with_a_reading():
+    assert (
+        compare_country_of_origin(None, None, False).outcome
+        is CheckOutcome.NOT_APPLICABLE
+    )
+    result = compare_country_of_origin("Scotland", _origin("Scotland"), False)
+    assert result.outcome is CheckOutcome.NOT_APPLICABLE
+
+
+def test_origin_imported_unresolved_cases():
+    assert (
+        compare_country_of_origin(None, _origin("Scotland"), True).outcome
+        is CheckOutcome.NOT_EVALUATED
+    )
+    assert (
+        compare_country_of_origin("Scotland", None, True).outcome
+        is CheckOutcome.NEEDS_REVIEW
+    )
+    conflicting = ExtractedField(
+        FieldId.COUNTRY_OF_ORIGIN,
+        ExtractionState.CONFLICTING,
+        (Observation("Scotland", "front"), Observation("Ireland", "back")),
+        "Images differ.",
+    )
+    assert (
+        compare_country_of_origin("Scotland", conflicting, True).outcome
+        is CheckOutcome.NEEDS_REVIEW
     )

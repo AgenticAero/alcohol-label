@@ -7,10 +7,23 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from alcohol_label.comparison import (
+    compare_alcohol_content,
+    compare_brand,
+    compare_class_type,
+    compare_country_of_origin,
+    compare_net_contents,
+    compare_producer_address,
+    compare_producer_name,
+)
 from alcohol_label.schemas import (
     ApplicationData,
     CheckId,
     CheckOutcome,
+    ExtractedField,
+    ExtractionState,
+    FieldId,
+    Observation,
     application_from_dict,
     application_to_dict,
 )
@@ -97,12 +110,12 @@ def test_expected_outcomes_cover_every_check_with_valid_outcomes():
 
 def test_starter_scenarios_cover_the_four_required_cases():
     baseline = _application("S01-clear-match")
-    assert set(SCENARIOS) == {
+    assert {
         "S01-clear-match",
         "S02-brand-case-only",
         "S03-abv-mismatch",
         "S04-warning-text-changed",
-    }
+    } <= set(SCENARIOS)
     other_than_match = {
         sid: {c for c, o in s["expected_outcomes"].items() if o != "match"}
         for sid, s in SCENARIOS.items()
@@ -179,3 +192,51 @@ def test_annotations_agree_with_the_applications_and_the_warning_change():
         clear["warning_body"].replace("impairs", "affects") == changed["warning_body"]
     )
     assert STARTERS["labels/starter-clear.png"]["provenance"]["defect"] is None
+
+
+def _extracted(field_id: FieldId, text: str | None) -> ExtractedField:
+    if text is None:
+        return ExtractedField(
+            field_id, ExtractionState.MISSING, (), "Not printed on the label."
+        )
+    return ExtractedField(
+        field_id, ExtractionState.OBSERVED, (Observation(text, "front"),)
+    )
+
+
+@pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
+def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
+    """Offline check of the comparison rules against annotated pixels, not extraction."""
+    application = application_from_dict(scenario["application"])
+    image = STARTERS[scenario["image_files"][0]]["visible_text"]
+
+    def field(field_id: FieldId) -> ExtractedField:
+        return _extracted(field_id, image[field_id.value])
+
+    results = {
+        CheckId.BRAND: compare_brand(application.brand, field(FieldId.BRAND)),
+        CheckId.CLASS_TYPE: compare_class_type(
+            application.class_type, field(FieldId.CLASS_TYPE)
+        ),
+        CheckId.ALCOHOL_CONTENT: compare_alcohol_content(
+            application.alcohol_content, field(FieldId.ALCOHOL_CONTENT)
+        ),
+        CheckId.NET_CONTENTS: compare_net_contents(
+            application.net_contents, field(FieldId.NET_CONTENTS)
+        ),
+        CheckId.PRODUCER_NAME: compare_producer_name(
+            application.producer_name, field(FieldId.PRODUCER_NAME)
+        ),
+        CheckId.PRODUCER_ADDRESS: compare_producer_address(
+            application.producer_address, field(FieldId.PRODUCER_ADDRESS)
+        ),
+        CheckId.COUNTRY_OF_ORIGIN: compare_country_of_origin(
+            application.country_of_origin,
+            field(FieldId.COUNTRY_OF_ORIGIN),
+            application.is_imported,
+        ),
+    }
+    expected = scenario["expected_outcomes"]
+    assert {c.value: r.outcome.value for c, r in results.items()} == {
+        c.value: expected[c.value] for c in results
+    }
