@@ -34,7 +34,7 @@ The priorities below are engineering recommendations, not an official ranking su
 Batch support is a meaningful stakeholder request, even though it is not enumerated under Technical Requirements. Deferring it protects the core, but does not make it disappear: report its actual status and limits.
 ## Requirement coverage and conscious gaps
 
-| Requirement | Assignment need | Work items | Three-day treatment |
+| Requirement | Assignment need | Jira Work items | Three-day treatment |
 | --- | --- | --- | --- |
 | R01 | Application versus label comparison | AL-7–AL-9, AL-11 | Manual expected-values form; one application per review. |
 | R02 | Common fields and beverage applicability | AL-7, AL-8, AL-11 | All listed common fields included for the distilled-spirit profile; wine/beer-specific rules deferred. |
@@ -210,10 +210,21 @@ Represent a processing error separately from a labeling result. `ReviewResponse.
 ### Field-specific comparison policies
 
 - **Brand and class/type:** normalize Unicode, whitespace, and case as appropriate. Handle typographic apostrophes explicitly. Do not remove all punctuation or accept a similar-looking brand automatically.
-  - Implemented for brand (AL-9): NFKC, typographic apostrophes to `'`, whitespace collapse and casefold; other punctuation is kept. Equal after normalization is `match` (explained when the raw text differs); different is `discrepancy` with evidence; missing, uncertain, conflicting or absent extraction is `needs_review`; no expected brand is `not_evaluated`. The result carries expected value, observed raw text and image evidence references. Class/type is not yet implemented.
+  - Implemented for brand (AL-9): NFKC, typographic apostrophes to `'`, whitespace collapse and casefold; other punctuation is kept. Equal after normalization is `match` (explained when the raw text differs); different is `discrepancy` with evidence; missing, uncertain, conflicting or absent extraction is `needs_review`; no expected brand is `not_evaluated`. The result carries expected value, observed raw text and image evidence references. Class/type and producer name (AL-86) use the same policy, with the field named in the explanation.
 - **Alcohol content:** parse the numeric percentage, compare using decimal values, and retain the printed text. `45%` versus `45.0%` can match numerically; `45%` versus `40%` cannot. Proof consistency may be an additional documented check, but proof alone must not silently satisfy a required percentage statement.
 - **Net contents:** convert supported units to a canonical quantity for comparison; `0.75 L` and `750 mL` can be equivalent. Value equivalence is separate from the legal acceptability of every printed format.
-- **Producer/address and origin:** begin with conservative normalization. Ambiguous abbreviations require review unless an equivalence rule is explicitly implemented and tested. Imported-product applicability comes from application data.
+- **Producer address (AL-89, AL-93):** extraction returns producer name and address as separate fields without the role phrase (`Bottled by Example Distillery, Louisville, KY` gives name `Example Distillery` and address `Louisville, KY`); a line that cannot be split reliably is `uncertain` with the printed line kept, so the check is `needs_review`. Comparison normalizes as for brand, drops periods and spells out street types (`st`, `ave`, `rd`, `blvd`, `dr`, `ln`, `ct`, `hwy`, `pkwy`, `pl`) on both sides. Equal is `match`; the expected address also matches when its comma-separated segments are a consecutive run of the printed segments (`Louisville, KY` within `123 Main St, Louisville, KY`, but not `New Louisville, KY`). Anything else is `discrepancy` with both values. Other abbreviations (`Kentucky` versus `KY`) are not expanded, and the match depends on the label's commas.
+- **Country of origin (AL-89):** applies to imports only; applicability comes from application data. Origin is never inferred from an address. Extraction (prompt `label-extraction-v3`) returns `country_of_origin` only from an explicit origin statement and otherwise reports it missing.
+
+  | Situation | Prototype treatment |
+  | --- | --- |
+  | Expected `Scotland`; clearly observed `Product of Scotland` | `match` using the documented prefix normalization |
+  | Only an importer's U.S. address is visible | Do not infer origin from that address |
+  | Imported product; origin not observed in supplied images | `needs_review`; request additional evidence |
+  | Clearly observed origin differs from expected | `discrepancy` |
+  | Confirmed wholly domestic product | `not_applicable` for the import-origin requirement |
+
+  The only normalization is removing one recognized phrase (`Product of`, `Produce of`, `Made in`) at the very start of the origin text, plus brand-style case and whitespace normalization. The raw text stays as evidence; the explanation shows raw text, normalized value and outcome. Wording such as `Bottled in Scotland` or `Scotland-inspired` is not an origin match and is reported as a discrepancy.
 - **Warning:** obtain the canonical text from 27 CFR 16.21 and pin a reviewed version in the code. Allow documented layout whitespace normalization while retaining words, order, punctuation, and heading case. Do not autocorrect OCR into the expected warning.
 - **Warning presentation:** assess the original image/crop for boldness and other supported visual checks. Assess style before image transformations that could alter apparent stroke weight. Uncertain or unsupported style checks remain visible as review items.
 
