@@ -2,7 +2,7 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** Planning and initial repository setup. Application behavior, setup commands, tests and deployment have not yet been verified. Features below describe the intended prototype, not completed functionality.
+**Status:** AL-8 extraction is implemented locally with offline tests. Live extraction accuracy, comparison behavior and hosted performance remain unevaluated.
 
 **Deployed application:** Pending deployment.
 
@@ -51,7 +51,7 @@ Python and Poetry are the selected runtime and dependency-management foundation.
 | Supported Python version | 3.11 (verified 3.11.11 via `poetry run python --version`); `pyproject.toml` allows `>=3.11,<4.0` |
 | Poetry version | 2.2.1 (verified with `poetry --version`) |
 | UI framework | Streamlit |
-| Extraction provider/model | Pending selection |
+| Extraction provider/model | OpenAI Responses API; `OPENAI_MODEL` defaults to `gpt-6-luna` |
 | Hosting platform | Pending selection |
 | Native dependencies and required network endpoints | Pending confirmation |
 
@@ -66,7 +66,7 @@ Actual tools and AI assistance are documented in [Tool use](docs/tool-use.md).
 | Obtain the source | `git clone https://github.com/AgenticAero/alcohol-label.git && cd alcohol-label` |
 | Install prerequisites | Python 3.11 and Poetry 2.2.x. No native dependencies are needed so far. |
 | Install dependencies | `poetry install` (includes the `dev` group: pytest, Ruff, pre-commit, commitizen). Verified as a dry run against the existing environment. |
-| Configure the application | No settings are required yet. [`.env.example`](.env.example) is a secret-free placeholder; copy it to `.env` (Git-ignored) when settings are added. Provider credentials and endpoints are TODO until a provider is chosen. |
+| Configure extraction | Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the environment or in a Git-ignored `.env` based on [`.env.example`](.env.example). Optional settings: `OPENAI_BASE_URL` and `OPENAI_REASONING_EFFORT` (default `low`). The app sends uploaded label images to the configured provider over HTTPS; expected application values are not sent. |
 | Confirm the environment | `poetry run python -c "import sys, alcohol_label; print(sys.version.split()[0], alcohol_label.__file__)"` prints `3.11.11` and the `src/alcohol_label` path (verified). |
 
 Keep credentials outside version control. Document which image data is sent to an external service, if applicable, and how uploaded data is retained or cleaned up.
@@ -77,7 +77,7 @@ Keep credentials outside version control. Document which image data is sent to a
 
     poetry run streamlit run src/alcohol_label/app.py
 
-**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify validates the input and lists every check as not evaluated, because label extraction is not implemented yet. No settings or credentials are needed.
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Verification checks remain not evaluated until comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
 **Sample review:** Four starter scenarios with expected application values,
 expected outcomes and provenance are in
@@ -113,10 +113,10 @@ differences before committing.
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | `poetry run pytest` | 111 passed (offline schema, intake and review tests) |
+| Unit and adapter tests | `poetry run pytest` | 126 passed (offline; includes AL-8 parsing, aggregation and error cases) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
 | Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
-| Live extraction evaluation | TODO | Not run |
+| Live extraction evaluation | `poetry run python -c '...'` | Single-image and two-image adapter smoke calls succeeded; one two-image run took 14.09 s, so the five-second target is not demonstrated |
 | Hosted performance evaluation | TODO | Not run |
 
 Keep tests that require live credentials separate from offline rule/parsing tests. Passing mocked tests does not establish extraction accuracy. See [Evaluation](docs/evaluation.md) for planned scenarios, methods, actual results and known failures.

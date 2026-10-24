@@ -167,6 +167,19 @@ def test_observed_field_carries_source_image_and_location():
     assert field.explanation is None
 
 
+def test_observed_field_retains_equal_readings_from_distinct_images():
+    observations = (Observation("45% ABV", "front"), Observation("45% ABV", "back"))
+    field = ExtractedField(
+        FieldId.ALCOHOL_CONTENT, ExtractionState.OBSERVED, observations
+    )
+
+    assert field.observations == observations
+    assert [observation.image_id for observation in field.observations] == [
+        "front",
+        "back",
+    ]
+
+
 def test_extracted_field_copies_observations_to_immutable_tuple():
     observation = Observation("45% Alc./Vol.", "img-1")
     observations = [observation]
@@ -214,6 +227,11 @@ def test_unknowns_use_none_state_and_explanation_and_uncertain_may_hold_candidat
         (
             ExtractionState.OBSERVED,
             (Observation("a", "i"), Observation("b", "i")),
+            None,
+        ),
+        (
+            ExtractionState.OBSERVED,
+            (Observation("a", "i"), Observation("a", "i")),
             None,
         ),
         (ExtractionState.MISSING, (Observation("a", "i"),), "x"),

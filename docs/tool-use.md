@@ -122,6 +122,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** Spike runs recorded in [evaluation.md](evaluation.md); `poetry run ruff check scripts` and `ruff format --check scripts` passed; hosted call returned HTTP 200 in 4.13 s.
 - **Pending checks / limitations:** Not a live evaluation: few attempts, no held-out images, no negative bold example, no cost measurement. The check app and Azure resources are temporary.
 
+### 2026-10-23 — AL-8 image-only extraction implementation
+
+- **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded. OpenAI Responses API adapter implemented from the AL-6 spike pattern; no provider SDK dependency added.
+- **Purpose:** Extract structured, image-linked observations for one application's supplied label images while preserving raw text, uncertainty, conflicts and processing failures.
+- **Inputs:** Live AL-8 acceptance criteria, AL-6 provider decision and spike, existing schemas/intake/review path, starter fixture manifest, and repository instructions.
+- **Output used:** `src/alcohol_label/extraction.py`, Verify integration and pending-review behavior, equal-observation schema update, concurrent per-image extraction (maximum two workers), focused extraction/review/schema tests, and setup/architecture/evaluation documentation.
+- **Human review / changes:** User confirmed the AL-6 merged PR indicator referred to AL-7. The implementation does not send expected application values to the provider and does not implement comparisons or visual-style checks.
+- **Checks performed:** `poetry run pytest` (126 passed, 0 failed, 0 skipped); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); live single- and two-image adapter smoke calls. The two-image run completed in 14.09 seconds without errors and preserved the warning conflict. A blank `OPENAI_BASE_URL` fallback bug was fixed and covered offline; malformed-response-envelope tests verify invalid output items and content parts map to controlled provider errors.
+- **Pending checks / limitations:** The 14.09-second two-image smoke exceeds the five-second target and is one run, not a p95 evaluation. Broader accuracy and hosted performance evaluation remain pending. Rotate the local credential if it is the same value surfaced in the earlier diagnostic output.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.

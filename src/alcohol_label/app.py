@@ -2,8 +2,9 @@
 
 import streamlit as st
 
+from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
-from alcohol_label.review import review_without_extraction
+from alcohol_label.review import review_after_extraction
 from alcohol_label.schemas import CheckOutcome, Unit
 
 _VOLUME_UNITS = {
@@ -33,7 +34,7 @@ def _clear_form() -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Alcohol Label Verification")
+    st.set_page_config(page_title="Alcohol Label Verification", page_icon="🥃")
     st.title("Alcohol Label Verification")
     st.info(
         "Scope: English-language U.S. distilled-spirit labels, one application "
@@ -92,19 +93,55 @@ def main() -> None:
             for error in result.errors:
                 st.error(error)
         else:
-            _show_review(result.application)
+            with st.spinner("Reading text from label images..."):
+                _show_review(result.application, uploads)
 
 
-def _show_review(application) -> None:
-    response = review_without_extraction(application)
+def _show_review(application, uploads: list[UploadedImage]) -> None:
+    extraction = extract_application(
+        application.images,
+        [upload.data for upload in uploads],
+    )
+    if extraction.metadata:
+        st.caption(
+            f"Extraction: {extraction.metadata.provider} / {extraction.metadata.model} "
+            f"(prompt {extraction.metadata.prompt_id}, schema {extraction.metadata.schema_id})"
+        )
+    for error in extraction.errors:
+        st.error(error.message)
+
+    if extraction.fields:
+        st.subheader("Observed label fields")
+        headers = st.columns([1.2, 1, 5])
+        headers[0].markdown("**Field**")
+        headers[1].markdown("**State**")
+        headers[2].markdown("**Observations**")
+        for index, field in enumerate(extraction.fields):
+            field_column, state_column, observation_column = st.columns([1.2, 1, 5])
+            field_column.write(field.field_id.value.replace("_", " "))
+            state_column.write(field.state.value.replace("_", " "))
+            with observation_column:
+                for observation in field.observations:
+                    st.text(f"{observation.raw_text} (image {observation.image_id})")
+                if field.explanation:
+                    st.caption(f"Note: {field.explanation}")
+            if index < len(extraction.fields) - 1:
+                st.divider()
+
+    response = review_after_extraction(application, extraction.errors)
     results = response.check_results
     unresolved = sum(r.outcome is CheckOutcome.NOT_EVALUATED for r in results)
     if response.all_clear:
         st.success("All supported checks passed.")
     else:
+        extraction_status = (
+            "Extraction encountered processing failures."
+            if extraction.errors
+            else "Comparison is not implemented."
+        )
         st.warning(
-            f"Incomplete: {unresolved} of {len(results)} checks not evaluated. "
-            "This is not a pass."
+            f"{unresolved} of {len(results)} checks not evaluated. "
+            f"{extraction_status} This is not a pass."
         )
     st.table(
         {
