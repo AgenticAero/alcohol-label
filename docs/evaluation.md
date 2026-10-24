@@ -103,7 +103,7 @@ Batch throughput and queue delay require separate measurement if batch support i
 | `poetry run ruff check .` | Passed | Repository lint. |
 | `poetry run ruff format --check .` | Passed; 20 files formatted | Repository formatting check. |
 
-These checks do not validate live extraction accuracy or hosted performance. The single-image adapter smoke result below is separate; evaluate both distinct starter images before making accuracy claims.
+These checks do not validate live extraction accuracy or hosted performance. The adapter smoke results below are separate from a full accuracy or performance evaluation.
 
 ### AL-8 live adapter smoke check (2026-10-23)
 
@@ -112,6 +112,14 @@ These checks do not validate live extraction accuracy or hosted performance. The
 - **Observed result:** No processing error. Seven fields were `observed`; `country_of_origin` was `missing`, matching the fixture annotation. The warning was returned as raw `warning_text`.
 - **Failure diagnosed and corrected:** A blank `OPENAI_BASE_URL` in the local environment overrode the default, producing the relative URL `/responses`. Blank values now use `https://api.openai.com/v1`; an offline regression test covers this.
 - **Limitations:** Latency was not measured. This single adapter smoke call does not establish accuracy, UI behavior, hosted performance, or the AL-8 requirement to evaluate both distinct starter images.
+
+### AL-8 concurrent two-image smoke check (2026-10-23)
+
+- **Input:** `starter-clear.png` and `starter-warning-changed.png`, passed together as one two-image application to the production adapter.
+- **Provider configuration:** OpenAI Responses API, model `gpt-6-luna`, prompt `label-extraction-v1`, schema `label-observations-v1`.
+- **Observed result:** Both calls completed without processing errors. Ordinary fields were observed, country of origin was missing, and `warning_text` was conflicting across the two images.
+- **Elapsed time:** 14.09 seconds for this single local run.
+- **Limitations:** This is one smoke measurement, not the prescribed performance sample. It exceeds the five-second target and does not establish p95 performance or general extraction accuracy. More timing/evaluation work remains necessary.
 
 ### AL-6 feasibility spike (2026-10-23)
 

@@ -9,6 +9,7 @@ import socket
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -213,6 +214,14 @@ def _parse_fields(response: dict, image_id: str) -> dict[FieldId, ExtractedField
     return fields
 
 
+def _extract_image(
+    image_bytes: bytes,
+    image_id: str,
+    config: ProviderConfig,
+) -> dict[FieldId, ExtractedField]:
+    return _parse_fields(_call_provider(image_bytes, config), image_id)
+
+
 def _provider_error(error: Exception, image_id: str) -> ProcessingError:
     message = f"Extraction failed for image {image_id}. Check provider configuration and connectivity."
     if isinstance(error, urllib.error.HTTPError):
@@ -319,22 +328,27 @@ def extract_application(
     )
     per_image = []
     errors = []
-    for image, image_bytes in zip(image_references, image_data, strict=True):
-        image_id = image.image_id
-        try:
-            per_image.append(
-                _parse_fields(_call_provider(image_bytes, config), image_id)
+    with ThreadPoolExecutor(max_workers=len(image_references)) as executor:
+        pending = [
+            (
+                image.image_id,
+                executor.submit(_extract_image, image_bytes, image.image_id, config),
             )
-        except (
-            urllib.error.HTTPError,
-            urllib.error.URLError,
-            TimeoutError,
-            OSError,
-            TypeError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as error:
-            errors.append(_provider_error(error, image_id))
+            for image, image_bytes in zip(image_references, image_data, strict=True)
+        ]
+        for image_id, future in pending:
+            try:
+                per_image.append(future.result())
+            except (
+                urllib.error.HTTPError,
+                urllib.error.URLError,
+                TimeoutError,
+                OSError,
+                TypeError,
+                ValueError,
+                json.JSONDecodeError,
+            ) as error:
+                errors.append(_provider_error(error, image_id))
 
     fields = _aggregate_fields(per_image, len(errors))
     return ExtractionResult(fields, tuple(errors), metadata)

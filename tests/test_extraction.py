@@ -1,5 +1,6 @@
 import base64
 import json
+import threading
 import urllib.error
 from io import BytesIO
 
@@ -65,19 +66,19 @@ def test_provider_request_contains_image_and_fixed_instructions_only(monkeypatch
 def test_extract_application_preserves_equal_and_conflicting_image_observations(
     monkeypatch,
 ):
-    responses = iter(
-        [
-            _response({FieldId.BRAND.value: {"text": "OLD TOM", "state": "observed"}}),
-            _response(
-                {FieldId.BRAND.value: {"text": "Old Tom Reserve", "state": "observed"}}
-            ),
-        ]
-    )
-    payloads = []
+    responses = {
+        b"front bytes": _response(
+            {FieldId.BRAND.value: {"text": "OLD TOM", "state": "observed"}}
+        ),
+        b"back bytes": _response(
+            {FieldId.BRAND.value: {"text": "Old Tom Reserve", "state": "observed"}}
+        ),
+    }
+    both_requests_started = threading.Barrier(2)
 
     def fake_call(data, config):
-        payloads.append(data)
-        return next(responses)
+        both_requests_started.wait(timeout=5)
+        return responses[data]
 
     monkeypatch.setattr(extraction, "_call_provider", fake_call)
 
@@ -100,7 +101,6 @@ def test_extract_application_preserves_equal_and_conflicting_image_observations(
     assert [item.image_id for item in class_type.observations] == ["front", "back"]
     assert result.errors == ()
     assert result.metadata.model == "test-model"
-    assert payloads == [b"front bytes", b"back bytes"]
 
 
 def test_warning_text_preserves_provider_text_verbatim(monkeypatch):
@@ -125,13 +125,10 @@ def test_warning_text_preserves_provider_text_verbatim(monkeypatch):
 
 
 def test_provider_failure_preserves_successful_image_observations(monkeypatch):
-    calls = iter([_response(), urllib.error.URLError("private provider detail")])
-
     def fake_call(data, config):
-        response = next(calls)
-        if isinstance(response, Exception):
-            raise response
-        return response
+        if data == b"back":
+            raise urllib.error.URLError("private provider detail")
+        return _response()
 
     monkeypatch.setattr(extraction, "_call_provider", fake_call)
 
