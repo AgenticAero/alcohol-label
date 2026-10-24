@@ -113,7 +113,7 @@ differences before committing.
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | `poetry run pytest` | 124 passed (offline; includes AL-8 parsing, aggregation and error cases) |
+| Unit and adapter tests | `poetry run pytest` | 126 passed (offline; includes AL-8 parsing, aggregation and error cases) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
 | Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
 | Live extraction evaluation | `poetry run python -c '...'` | One adapter smoke call on `starter-clear.png` succeeded after blank `OPENAI_BASE_URL` fallback fix; full two-image evaluation pending |

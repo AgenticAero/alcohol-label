@@ -3,6 +3,7 @@ import json
 import urllib.error
 from io import BytesIO
 
+import pytest
 from PIL import Image
 
 from alcohol_label import extraction
@@ -179,6 +180,25 @@ def test_malformed_provider_schema_becomes_processing_error(monkeypatch):
     assert all(field.state is ExtractionState.UNCERTAIN for field in result.fields)
     assert result.errors[0].code is ErrorCode.INVALID_PROVIDER_RESPONSE
     assert "did not match the extraction schema" in result.errors[0].message
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"output": [None]},
+        {"output": [{"content": [None]}]},
+    ],
+)
+def test_malformed_provider_envelope_becomes_processing_error(monkeypatch, response):
+    monkeypatch.setattr(extraction, "_call_provider", lambda data, config: response)
+
+    result = extract_application(
+        [ImageReference("front", "front.png")], [b"front"], config=_config()
+    )
+
+    assert result.errors[0].code is ErrorCode.INVALID_PROVIDER_RESPONSE
+    assert result.fields
+    assert all(field.state is ExtractionState.UNCERTAIN for field in result.fields)
 
 
 def test_unconfigured_provider_returns_controlled_error(monkeypatch):

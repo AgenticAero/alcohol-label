@@ -99,7 +99,7 @@ Batch throughput and queue delay require separate measurement if batch support i
 
 | Command | Result | Scope |
 | --- | --- | --- |
-| `poetry run pytest` | 124 passed, 0 failed, 0 skipped | Offline suite; includes mocked provider contract, response parsing, multi-image aggregation and failure mapping. |
+| `poetry run pytest` | 126 passed, 0 failed, 0 skipped | Offline suite; includes mocked provider contract, response parsing, multi-image aggregation and failure mapping. |
 | `poetry run ruff check .` | Passed | Repository lint. |
 | `poetry run ruff format --check .` | Passed; 20 files formatted | Repository formatting check. |
 

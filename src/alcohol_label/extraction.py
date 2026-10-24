@@ -156,10 +156,25 @@ def _call_provider(data: bytes, config: ProviderConfig) -> dict:
 
 
 def _output_text(response: dict) -> str:
-    for item in response.get("output", []):
-        for part in item.get("content", []):
-            if part.get("type") == "output_text" and isinstance(part.get("text"), str):
-                return part["text"]
+    if not isinstance(response, dict):
+        raise TypeError("provider response must be an object")
+    output = response.get("output", [])
+    if not isinstance(output, list):
+        raise TypeError("provider response output must be a list")
+    for item in output:
+        if not isinstance(item, dict):
+            raise TypeError("provider response output items must be objects")
+        content = item.get("content", [])
+        if not isinstance(content, list):
+            raise TypeError("provider response content must be a list")
+        for part in content:
+            if not isinstance(part, dict):
+                raise TypeError("provider response content parts must be objects")
+            if part.get("type") == "output_text":
+                text = part.get("text")
+                if not isinstance(text, str):
+                    raise TypeError("provider output_text must contain string text")
+                return text
     raise ValueError("provider response has no structured output")
 
 
