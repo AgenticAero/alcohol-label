@@ -4,7 +4,11 @@ import pytest
 from PIL import Image
 
 from alcohol_label.intake import UploadedImage, build_application
-from alcohol_label.review import review_after_extraction, review_without_extraction
+from alcohol_label.review import (
+    review_after_extraction,
+    review_without_extraction,
+    unresolved_style_checks,
+)
 from alcohol_label.schemas import (
     CheckId,
     CheckOutcome,
@@ -297,3 +301,34 @@ def test_processing_error_prevents_every_comparison_even_with_fields():
         }
         assert not result.evidence
     assert response.processing_errors == (error,)
+
+
+def _style_items(styles, fields=None):
+    response = review_after_extraction(
+        _application(), (), fields or _fields(), tuple(styles)
+    )
+    return unresolved_style_checks(response, ["image-1", "image-2"])
+
+
+def test_unresolved_style_checks_point_at_the_evidence_image():
+    items = _style_items((_style("uncertain", "bold", "Blurred."),))
+
+    assert [(r.check_id, ids) for r, ids in items] == [
+        (CheckId.WARNING_HEADING_BOLD, ("front",))
+    ]
+    assert "Blurred." in items[0][0].explanation
+
+
+def test_unresolved_style_without_evidence_offers_every_supplied_image():
+    items = _style_items(())
+
+    assert [r.check_id for r, _ in items] == [
+        CheckId.WARNING_HEADING_BOLD,
+        CheckId.WARNING_BODY_NOT_BOLD,
+    ]
+    assert all(ids == ("image-1", "image-2") for _, ids in items)
+
+
+def test_resolved_style_checks_are_not_offered_for_visual_review():
+    assert _style_items((_style(),)) == ()
+    assert _style_items((_style("not_bold", "bold"),)) == ()

@@ -1,5 +1,7 @@
 """Check results: field and warning comparisons after extraction."""
 
+from collections.abc import Sequence
+
 from alcohol_label.comparison import (
     compare_alcohol_content,
     compare_brand,
@@ -132,3 +134,21 @@ def _review(
         tuple(results),
         tuple(processing_errors),
     )
+
+
+def unresolved_style_checks(
+    response: ReviewResponse, all_image_ids: Sequence[str]
+) -> tuple[tuple[CheckResult, tuple[str, ...]], ...]:
+    """Style checks needing review, each with the image IDs a reviewer should open.
+
+    Uses the result's evidence images; with none, every supplied image.
+    """
+    items = []
+    for result in response.check_results:
+        if (
+            result.check_id in _STYLE_COMPARATORS
+            and result.outcome is CheckOutcome.NEEDS_REVIEW
+        ):
+            evidence_ids = tuple(dict.fromkeys(e.image_id for e in result.evidence))
+            items.append((result, evidence_ids or tuple(all_image_ids)))
+    return tuple(items)
