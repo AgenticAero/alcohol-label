@@ -165,6 +165,36 @@
       }
     },
     {
+      "image_id": "warn-heading-blurry",
+      "file": "labels/warn-heading-blurry.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 93251,
+      "sha256": "c8d39ce08741e3f3bebdb927007e005f9411fe3c5f4d5271812142963891df8f",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "starter-clear.png (tests/fixtures/render_starter_labels.py) edited by hand in an image editor; not reproducible by the renderer",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The start of the warning heading (pixels about x 79-366, y 598-699) is smudged and garbled so heading weight cannot be judged; all other label content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING: (partly illegible)",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "cannot be determined (smudged)",
+        "warning_body": "regular weight"
+      }
+    },
+    {
       "image_id": "import-product-of",
       "file": "labels/import-product-of.png",
       "format": "PNG",
