@@ -2,9 +2,9 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** AL-8 extraction and the AL-9 through AL-12 comparisons are implemented; the staging deployment is still at AL-10/AL-11. AL-12 warning wording and heading-case changes on this branch are not yet deployed. Warning boldness checks remain not evaluated (AL-13). Live extraction accuracy beyond the starter checks and hosted performance remain unevaluated.
+**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-12 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11. Jira AL-12 warning wording and heading-case changes on this branch are not yet deployed. Warning boldness checks remain not evaluated (Jira AL-13). Live extraction accuracy beyond the starter checks and hosted performance remain unevaluated.
 
-**Deployed application:** https://alcohol-label-staging.azurewebsites.net (Azure App Service B1; the first request after idle can take over a minute).
+**Deployed application:** https://alcohol-label-staging.azurewebsites.net (the first request after idle can take over a minute).
 
 ## Project overview
 
@@ -48,8 +48,8 @@ Python and Poetry are the selected runtime and dependency-management foundation.
 
 | Item | Status |
 | --- | --- |
-| Supported Python version | 3.11 (verified 3.11.11 via `poetry run python --version`); `pyproject.toml` allows `>=3.11,<4.0` |
-| Poetry version | 2.2.1 (verified with `poetry --version`) |
+| Supported Python version | 3.11; `pyproject.toml` allows `>=3.11,<4.0` |
+| Poetry version | 2.2.1  |
 | UI framework | Streamlit |
 | Extraction provider/model | OpenAI Responses API; `OPENAI_MODEL` defaults to `gpt-6-luna` |
 | Hosting platform | Azure App Service Linux B1, Python 3.11, Central US |
@@ -65,7 +65,7 @@ Actual tools and AI assistance are documented in [Tool use](docs/tool-use.md).
 | --- | --- |
 | Obtain the source | `git clone https://github.com/AgenticAero/alcohol-label.git && cd alcohol-label` |
 | Install prerequisites | Python 3.11 and Poetry 2.2.x. No native dependencies are needed so far. |
-| Install dependencies | `poetry install` (includes the `dev` group: pytest, Ruff, pre-commit, commitizen). Verified as a dry run against the existing environment. |
+| Install dependencies | `poetry install` (includes the `dev` group: pytest, Ruff, pre-commit, commitizen).  |
 | Configure extraction | Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the environment or in a Git-ignored `.env` based on [`.env.example`](.env.example). Optional settings: `OPENAI_BASE_URL` and `OPENAI_REASONING_EFFORT` (default `low`). The app sends uploaded label images to the configured provider over HTTPS; expected application values are not sent. |
 | Confirm the environment | `poetry run python -c "import sys, alcohol_label; print(sys.version.split()[0], alcohol_label.__file__)"` prints `3.11.11` and the `src/alcohol_label` path (verified). |
 
@@ -113,7 +113,7 @@ differences before committing.
 | --- | --- | --- |
 | Unit and adapter tests | `poetry run pytest` | 331 passed on 2026-10-24 (offline; extraction parsing and errors, comparison policies, review wiring, warning fixtures) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
-| Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
+| Intake form, manual browser check (Jira AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
 | Live extraction evaluation | `poetry run python -c '...'` | Single-image and two-image adapter smoke calls succeeded; one two-image run took 14.09 s, so the five-second target is not demonstrated |
 | Hosted performance evaluation | TODO | Not run |
 
@@ -124,7 +124,7 @@ Keep tests that require live credentials separate from offline rule/parsing test
 | Item | Value |
 | --- | --- |
 | Application URL | https://alcohol-label-staging.azurewebsites.net |
-| Evaluator access instructions | Open the URL in any browser; no login. Enter the expected values, upload one or two JPEG/PNG label images, and select **Verify**. The seven field comparisons plus warning wording and heading-case checks are implemented on this branch; verify the deployed commit below. Warning boldness checks remain not evaluated pending AL-13. |
+| Evaluator access instructions | Open the URL in any browser; no login. Enter the expected values, upload one or two JPEG/PNG label images, and select **Verify**. The seven field comparisons plus warning wording and heading-case checks are implemented on this branch; verify the deployed commit below. Warning boldness checks remain not evaluated pending Jira AL-13. |
 | Deployed commit/release | `e4c8acb` on `main` (merge of PR #13, 2026-10-24) |
 | Fresh-session access check | Passed 2026-10-24 by the developer in a fresh browser session: brand match, brand discrepancy and the implemented-checks notice all worked. OpenAI Responses API request latency was over 5 s on the first run and 3.98 s on the second; this is not a performance evaluation. |
 
@@ -141,6 +141,6 @@ Verify that the evaluator can access both the application and source repository.
 | [Engineering plan](docs/engineering-plan.md) | Scope, requirements, assumptions, architecture and technical decisions. |
 | [Tool use](docs/tool-use.md) | Tools and AI assistance actually used, their purpose and how outputs were checked. |
 | [Evaluation](docs/evaluation.md) | Test data, methods, measured results, known failures and limitations. |
-| Jira project — link pending | Sprints, epics, stories, tasks, acceptance criteria, dependencies and status. |
+| [Jira project](https://agentic-team.atlassian.net/jira/software/projects/AL/summary) | Sprints, epics, stories, tasks, acceptance criteria, dependencies and status. |
 
 Maintain detailed work tracking in Jira and measured evidence in the evaluation document. Update this README as commands and features are verified so it describes the submitted application accurately.
