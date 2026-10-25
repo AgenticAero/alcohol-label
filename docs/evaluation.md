@@ -18,7 +18,7 @@ Start with four visually verified scenarios: a clear match, case-only brand vari
 
 Store reusable inputs and annotations in `tests/fixtures/`. Keep one fixture manifest alongside them; link it here when created instead of duplicating every annotation in this document.
 
-**Fixture manifest:** [`tests/fixtures/manifest.json`](../tests/fixtures/manifest.json) (`starter-0.1`), checked offline by `tests/test_fixtures.py`. It holds four starter scenarios (`S01` clear match, `S02` case-only brand, `S03` ABV mismatch, `S04` changed warning word) on two synthetic labels, plus the existing public or vendor images as unannotated reference images with source URLs and unconfirmed permission. Annotations are pending developer review. All scenarios are development data; no held-out set exists yet. Expected outcomes are pixel ground truth, not extractor results.
+**Fixture manifest:** [`tests/fixtures/manifest.json`](../tests/fixtures/manifest.json) (`starter-0.2`), checked offline by `tests/test_fixtures.py`. It holds fifteen synthetic scenarios on nine labels: the four starters (`S01` clear match, `S02` case-only brand, `S03` ABV mismatch, `S04` changed warning word) and `S05` to `S15` for origin, net-contents, proof-only and address rules, plus the existing public or vendor images as unannotated reference images with source URLs and unconfirmed permission. An offline test feeds each scenario's annotated label text through the comparison rules and the review and checks the expected outcomes. Annotations are pending developer review. All scenarios are development data; no held-out set exists yet. Expected outcomes are pixel ground truth, not extractor results.
 
 For each scenario, record:
 
@@ -141,6 +141,18 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Deployed revision:** `e4c8acb` on `main`, https://alcohol-label-staging.azurewebsites.net, Azure App Service B1 (Central US).
 - **Result:** In a fresh browser session a real extraction and brand comparison ran end to end: brand match, brand discrepancy and the implemented-checks notice all worked.
 - **Latency observed:** OpenAI Responses API request latency was over 5 s on the first run and 3.98 s on the second. Exact first-run value, sample size and input images were not recorded, so this is anecdotal and does not support the five-second target; the hosted performance evaluation is still pending.
+
+### AL-11 live pipeline check on the fixtures (2026-10-24)
+
+- **Revision and setup:** branch `al-11-compare-remaining` at `ffb1222`, run from the developer's machine (not the deployed app) with the production adapter, model `gpt-6-luna`, prompt `label-extraction-v3`, schema `label-observations-v1`, reasoning effort per the local `.env`.
+- **Input:** all 15 scenarios in `tests/fixtures/manifest.json` (`starter-0.2`), one run each, one image per application. They use nine distinct synthetic images; S01 to S03 and S10 share one image. Development data only; no held-out images.
+- **Result:** no processing errors. For the seven field checks, the app's outcome equalled the annotated expected outcome in all 105 of 105 cases (15 scenarios by 7 checks). This includes `Product of Scotland` against `Scotland` (match), the importer-address-only label (origin `needs_review`), proof-only and fl oz-only readings (`needs_review`), the role-phrase producer line (address isolated and matched), and `New Louisville, KY` (discrepancy). The four warning checks were not evaluated by design and are excluded.
+- **Latency (client-side extraction request, single image):** 3.12 to 7.08 s, with 14 of 15 requests between 3.1 and 5.0 s; the 7.08 s request was S08. This is not a hosted measurement and does not establish the five-second target.
+- **Limits:** one run per scenario, so run-to-run variation is unknown; the annotations are the developer's pending review and were made from the rendered pixels; synthetic, clear images only. This is not an accuracy claim for real labels.
+
+### AL-11 deployed smoke check
+
+- **Status:** Not run. It requires merging to `main` and deploying; the fixture clear label (`S01`) and one mismatch (`S03`) are to be run in a fresh browser session. Record the deployed commit, date, observed outcomes and latency here when done.
 
 ### Run context
 
