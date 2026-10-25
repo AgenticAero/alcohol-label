@@ -1,8 +1,6 @@
 import hashlib
-import json
 import re
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -24,6 +22,7 @@ from alcohol_label.schemas import (
     ApplicationData,
     CheckId,
     CheckOutcome,
+    ErrorCode,
     ExtractedField,
     ExtractionState,
     FieldId,
@@ -34,11 +33,7 @@ from alcohol_label.schemas import (
     application_to_dict,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures"
-MANIFEST = json.loads((FIXTURES / "manifest.json").read_text())
-SCENARIOS = {s["scenario_id"]: s for s in MANIFEST["scenarios"]}
-STARTERS = {i["file"]: i for i in MANIFEST["images"]}
-REFERENCES = {i["file"]: i for i in MANIFEST["reference_images"]["images"]}
+from .support import FIXTURES, REFERENCES, SCENARIOS, STARTERS
 
 
 def _application(scenario_id: str) -> dict:
@@ -67,6 +62,7 @@ def _is_simple(scenario: dict) -> bool:
     return (
         image is not None
         and not image.get("illegible_fields")
+        and "provider_failure" not in scenario
         and image["visible_text"]["warning_heading"] is not None
     )
 
@@ -524,6 +520,7 @@ def test_scenarios_cover_every_regression_category_in_the_acceptance_criteria():
         "warning style": _covers(_discrepant("warning_heading_bold"))
         + _covers(_discrepant("warning_body_not_bold")),
         "front/back evidence": _covers(lambda s: len(s["image_files"]) == 2),
+        "processing failure": _covers(lambda s: "provider_failure" in s),
         "unknown evidence": _covers(
             lambda s: "needs_review" in s["expected_outcomes"].values()
         ),
@@ -532,3 +529,22 @@ def test_scenarios_cover_every_regression_category_in_the_acceptance_criteria():
     assert len(SCENARIOS) >= 10
     assert {name: ids for name, ids in categories.items() if not ids} == {}
     assert len(categories["front/back evidence"]) >= 2
+
+
+def test_provider_failure_scenarios_expect_an_error_and_no_finding():
+    failing = {sid: s for sid, s in SCENARIOS.items() if "provider_failure" in s}
+    codes = {code.value for code in ErrorCode}
+    kinds = {"timeout", "rate_limited", "endpoint_blocked", "invalid_response"}
+
+    assert len(failing) >= 3
+    for sid, scenario in failing.items():
+        failure = scenario["provider_failure"]
+        image_ids = {i["image_id"] for i in scenario["application"]["images"]}
+        assert failure["kind"] in kinds, sid
+        assert failure["image"] in image_ids, sid
+        assert failure["expected_code"] in codes, sid
+        assert set(scenario["expected_outcomes"].values()) == {
+            "not_evaluated",
+            "not_applicable",
+        }, sid
+    assert {s["provider_failure"]["kind"] for s in failing.values()} == kinds

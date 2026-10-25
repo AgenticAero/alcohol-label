@@ -1,12 +1,13 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.5",
+  "dataset_version": "starter-0.6",
   "notes": [
     "S01-S04 and S16 cover clear, brand-case, ABV, warning-word and warning-heading-case scenarios; S05-S15 exercise comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
     "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
     "S17 and S18 differ from S01 only in warning font weight (non-bold heading; entirely bold warning). With S01 they form the three font-weight cases for AL-13; heading and body weight are annotated from the pixels, not inferred from the renderer settings.",
     "S19-S24 add front/back evidence (S19 warning only on the back image, S20 two images with differing warning wording) and unknown evidence (S21 warning absent, S22 mild blur, S23 heavy blur, S24 smudged heading). An image's illegible_fields lists fields whose reading cannot be established from the pixels; a null visible_text value means the statement is not printed.",
+    "S25-S28 are processing-failure scenarios. A provider_failure object names the image whose request fails (kind timeout, rate_limited, endpoint_blocked or invalid_response) and the expected error code; the expected outcome is a separate processing error with every check not evaluated, never a finding.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
   ],
   "annotation": {
@@ -1319,6 +1320,142 @@
         "warning_heading_case": "needs_review",
         "warning_heading_bold": "needs_review",
         "warning_body_not_bold": "needs_review"
+      }
+    },
+    {
+      "scenario_id": "S25-provider-timeout",
+      "description": "The extraction request times out; no label text is available.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "timeout", "expected_code": "provider_timeout"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S25-provider-timeout",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S26-provider-rate-limited",
+      "description": "The extraction provider rejects the request as rate limited.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "rate_limited", "expected_code": "rate_limited"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S26-provider-rate-limited",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S27-provider-invalid-response",
+      "description": "The extraction provider returns a response that is not valid structured output.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "invalid_response", "expected_code": "invalid_provider_response"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S27-provider-invalid-response",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S28-provider-failure-one-of-two-images",
+      "description": "The front image is extracted but the request for the back image is blocked; no check may pass.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "back", "kind": "endpoint_blocked", "expected_code": "endpoint_blocked"},
+      "image_files": ["labels/front-no-warning.png", "labels/back-warning-only.png"],
+      "application": {
+        "application_id": "S28-provider-failure-one-of-two-images",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/front-no-warning.png"}, {"image_id": "back", "uri": "tests/fixtures/labels/back-warning-only.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
       }
     }
   ],
