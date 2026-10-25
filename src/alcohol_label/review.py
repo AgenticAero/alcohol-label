@@ -8,6 +8,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_heading_case,
+    compare_warning_wording,
 )
 from alcohol_label.schemas import (
     ApplicationData,
@@ -44,6 +46,10 @@ _COMPARATORS = {
     CheckId.COUNTRY_OF_ORIGIN: lambda app, field: compare_country_of_origin(
         app.country_of_origin, field, app.is_imported
     ),
+}
+_WARNING_COMPARATORS = {
+    CheckId.WARNING_WORDING: compare_warning_wording,
+    CheckId.WARNING_HEADING_CASE: compare_warning_heading_case,
 }
 
 
@@ -89,6 +95,9 @@ def _review(
         )
         if extracted is not None and check_id in _COMPARATORS and not domestic_origin:
             results.append(_COMPARATORS[check_id](application, extracted.get(field_id)))
+            continue
+        if extracted is not None and check_id in _WARNING_COMPARATORS:
+            results.append(_WARNING_COMPARATORS[check_id](extracted.get(field_id)))
             continue
         if domestic_origin:
             outcome = CheckOutcome.NOT_APPLICABLE

@@ -105,6 +105,47 @@ def test_extract_application_preserves_equal_and_conflicting_image_observations(
     assert all(timing.elapsed_seconds >= 0 for timing in result.request_timings)
 
 
+def test_warning_visible_on_second_image_is_not_aggregated_as_missing(monkeypatch):
+    canonical_warning = (
+        "GOVERNMENT WARNING: (1) According to the Surgeon General, women should "
+        "not drink alcoholic beverages during pregnancy because of the risk of "
+        "birth defects. (2) Consumption of alcoholic beverages impairs your "
+        "ability to drive a car or operate machinery, and may cause health problems."
+    )
+    responses = {
+        b"front": _response(
+            {
+                FieldId.WARNING_TEXT.value: {"text": None, "state": "missing"},
+            }
+        ),
+        b"back": _response(
+            {
+                FieldId.WARNING_TEXT.value: {
+                    "text": canonical_warning,
+                    "state": "observed",
+                },
+            }
+        ),
+    }
+    monkeypatch.setattr(
+        extraction, "_call_provider", lambda data, config: responses[data]
+    )
+
+    result = extract_application(
+        [ImageReference("front", "front.png"), ImageReference("back", "back.png")],
+        [b"front", b"back"],
+        config=_config(),
+    )
+
+    warning = next(
+        field for field in result.fields if field.field_id is FieldId.WARNING_TEXT
+    )
+    assert warning.state is ExtractionState.OBSERVED
+    assert [(item.raw_text, item.image_id) for item in warning.observations] == [
+        (canonical_warning, "back")
+    ]
+
+
 def test_warning_text_preserves_provider_text_verbatim(monkeypatch):
     raw_warning = "  GOVERNMENT WARNING:\r\n(1) Exact text.  "
     monkeypatch.setattr(

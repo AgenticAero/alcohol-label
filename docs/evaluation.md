@@ -154,6 +154,14 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 
 - **Status:** Not run. It requires merging to `main` and deploying; the fixture clear label (`S01`) and one mismatch (`S03`) are to be run in a fresh browser session. Record the deployed commit, date, observed outcomes and latency here when done.
 
+### AL-12 offline warning-check implementation (2026-10-24)
+
+- **Checks run:** `poetry run pytest tests/test_comparison.py tests/test_review.py -q` (146 passed).
+- **Covered behavior:** exact wording with layout whitespace changes; changed warning word; independent uppercase-heading outcome; missing and uncertain warning evidence; conflicting observations from front/back images retain both evidence references. The two boldness checks remain `not_evaluated` for AL-13.
+- **Additional regression and repository checks:** omitted-word and second-image warning cases; final `poetry run pytest -q` (326 passed), `poetry run ruff check .` (passed), `poetry run ruff format --check .` (22 files formatted), and Streamlit `AppTest` (no app exceptions).
+- **Source:** current eCFR text for [27 CFR 16.21](https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-16/section-16.21); comparison normalizes whitespace only and retains the original observation.
+- **Limitations:** tests use synthetic or constructed observations and do not establish live extraction accuracy, hosted behavior, formatting compliance, or physical label placement. No deployed smoke check was run for this branch.
+
 ### Run context
 
 | Item | Recorded value |

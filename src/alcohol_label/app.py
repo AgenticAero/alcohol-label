@@ -44,9 +44,9 @@ def main() -> None:
     )
     st.info(
         "Implemented checks: brand, class/type, alcohol content, net contents, "
-        "producer name and address, and country of origin for imports. Warning "
-        "checks are not implemented yet and are shown as not evaluated; they are "
-        "not a pass."
+        "producer name and address, country of origin for imports, warning "
+        "wording and uppercase heading. Warning boldness checks are not yet "
+        "implemented and remain not evaluated; they are not a pass."
     )
 
     st.subheader("Expected application values")

@@ -15,6 +15,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_heading_case,
+    compare_warning_wording,
 )
 from alcohol_label.schemas import (
     ApplicationData,
@@ -202,6 +204,22 @@ def _extracted(field_id: FieldId, text: str | None) -> ExtractedField:
     return ExtractedField(
         field_id, ExtractionState.OBSERVED, (Observation(text, "front"),)
     )
+
+
+@pytest.mark.parametrize(
+    ("image_file", "expected_wording"),
+    [
+        ("labels/starter-clear.png", CheckOutcome.MATCH),
+        ("labels/starter-warning-changed.png", CheckOutcome.DISCREPANCY),
+    ],
+)
+def test_warning_text_checks_match_starter_annotations(image_file, expected_wording):
+    image = STARTERS[image_file]["visible_text"]
+    warning = f"{image['warning_heading']} {image['warning_body']}"
+    extracted = _extracted(FieldId.WARNING_TEXT, warning)
+
+    assert compare_warning_wording(extracted).outcome is expected_wording
+    assert compare_warning_heading_case(extracted).outcome is CheckOutcome.MATCH
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
