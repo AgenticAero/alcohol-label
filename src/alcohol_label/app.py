@@ -5,7 +5,7 @@ import streamlit as st
 
 from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
-from alcohol_label.review import review_after_extraction
+from alcohol_label.review import review_after_extraction, unresolved_style_checks
 from alcohol_label.schemas import CheckOutcome, Measurement, Unit
 
 _VOLUME_UNITS = {
@@ -13,7 +13,11 @@ _VOLUME_UNITS = {
     "L": Unit.LITER,
     "fl oz": Unit.FLUID_OUNCE,
 }
-_STATUS_STYLES = {"match": "color: green", "discrepancy": "color: red"}
+_STATUS_STYLES = {
+    "match": "color: green",
+    "discrepancy": "color: red",
+    "needs review": "color: darkorange",
+}
 _TEXT_KEYS = (
     "application_id",
     "brand",
@@ -45,8 +49,10 @@ def main() -> None:
     st.info(
         "Implemented checks: brand, class/type, alcohol content, net contents, "
         "producer name and address, country of origin for imports, warning "
-        "wording and uppercase heading. Warning boldness checks are not yet "
-        "implemented and remain not evaluated; they are not a pass."
+        "wording, uppercase heading, and warning heading and body font weight. "
+        "Font weight is judged visually from the image, not from the text; "
+        "physical type size is not checked. When weight is unclear, the check "
+        "needs review and is not a pass."
     )
 
     st.subheader("Expected application values")
@@ -154,7 +160,7 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
                     st.divider()
 
     response = review_after_extraction(
-        application, extraction.errors, extraction.fields
+        application, extraction.errors, extraction.fields, extraction.warning_styles
     )
     results = response.check_results
     counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
@@ -190,6 +196,43 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
             subset=["Status"],
         )
     )
+    _show_style_review(application, uploads, response)
+
+
+def _show_style_review(application, uploads: list[UploadedImage], response) -> None:
+    items = unresolved_style_checks(
+        response, [image.image_id for image in application.images]
+    )
+    if not items:
+        return
+    by_image: dict[str, list] = {}
+    for result, image_ids in items:
+        for image_id in image_ids:
+            by_image.setdefault(image_id, []).append(result)
+    originals = {
+        image.image_id: upload
+        for image, upload in zip(application.images, uploads, strict=True)
+    }
+    st.subheader("Visual review needed: warning font weight")
+    st.write(
+        "Font weight could not be settled automatically. Compare the warning "
+        "heading with the warning text in the original image and decide. This "
+        "is a manual review, not an automated pass."
+    )
+    for image_id, results in by_image.items():
+        upload = originals[image_id]
+        image_column, reason_column = st.columns([3, 2])
+        image_column.image(
+            upload.data,
+            caption=f"Original image {upload.name} ({image_id})",
+            alt=f"Original label image {upload.name}",
+            width="stretch",
+        )
+        with reason_column:
+            for result in results:
+                name = result.check_id.value.replace("_", " ")
+                st.markdown(f"**{name}: needs review**")
+                st.write(result.explanation)
 
 
 main()

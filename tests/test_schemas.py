@@ -24,7 +24,9 @@ from alcohol_label.schemas import (
     ProcessingStage,
     ReviewResponse,
     ReviewStatus,
+    StyleJudgement,
     Unit,
+    WarningStyleObservation,
     application_from_dict,
     application_to_dict,
     check_result_from_dict,
@@ -34,6 +36,8 @@ from alcohol_label.schemas import (
     review_response_from_dict,
     review_response_to_dict,
     validate_review_evidence,
+    warning_style_from_dict,
+    warning_style_to_dict,
 )
 
 
@@ -871,3 +875,73 @@ def test_review_evidence_boundary_rejects_reference_to_unextracted_field():
 
     with pytest.raises(ValueError, match="no extracted field"):
         validate_review_evidence(response, app, ())
+
+
+def test_warning_style_keeps_separate_judgements_and_source_image():
+    style = WarningStyleObservation(
+        "img-1", StyleJudgement.BOLD, StyleJudgement.NOT_BOLD
+    )
+
+    assert (style.image_id, style.heading, style.body) == (
+        "img-1",
+        StyleJudgement.BOLD,
+        StyleJudgement.NOT_BOLD,
+    )
+    assert style.reason is None
+    assert not hasattr(style, "confidence")
+
+
+@pytest.mark.parametrize(
+    ("build", "error"),
+    [
+        (
+            lambda: WarningStyleObservation(
+                "img-1", StyleJudgement.UNCERTAIN, StyleJudgement.NOT_BOLD
+            ),
+            ValueError,
+        ),
+        (
+            lambda: WarningStyleObservation(
+                "img-1", StyleJudgement.BOLD, StyleJudgement.UNCERTAIN, " "
+            ),
+            ValueError,
+        ),
+        (
+            lambda: WarningStyleObservation(
+                " ", StyleJudgement.BOLD, StyleJudgement.NOT_BOLD
+            ),
+            ValueError,
+        ),
+        (
+            lambda: WarningStyleObservation("img-1", "bold", StyleJudgement.NOT_BOLD),
+            TypeError,
+        ),
+    ],
+)
+def test_warning_style_rejects_invalid_records(build, error):
+    with pytest.raises(error):
+        build()
+
+
+def test_warning_style_round_trips_through_json_and_rejects_bad_input():
+    style = WarningStyleObservation(
+        "img-2", StyleJudgement.BOLD, StyleJudgement.UNCERTAIN, "Body is blurred."
+    )
+
+    data = json.loads(json.dumps(warning_style_to_dict(style)))
+
+    assert data == {
+        "image_id": "img-2",
+        "heading": "bold",
+        "body": "uncertain",
+        "reason": "Body is blurred.",
+    }
+    assert warning_style_from_dict(data) == style
+    with pytest.raises(ValueError):
+        warning_style_from_dict({**data, "heading": "heavy"})
+    with pytest.raises(ValueError):
+        warning_style_from_dict({"image_id": "img-2"})
+    with pytest.raises(ValueError):
+        warning_style_from_dict({**data, "reason": None})
+    with pytest.raises(TypeError):
+        warning_style_from_dict([])

@@ -84,12 +84,20 @@ def _centered(draw, y, text, font, fill=INK):
     draw.text(((SIZE[0] - width) / 2, y), text, font=font, fill=fill)
 
 
-def _warning(draw, heading: str, body: str, top: int, font_dir: Path) -> None:
-    """Wrapped paragraph: bold uppercase heading, regular-weight body."""
+def _warning(
+    draw,
+    heading: str,
+    body: str,
+    top: int,
+    font_dir: Path,
+    heading_bold: bool = True,
+    body_bold: bool = False,
+) -> None:
+    """Wrapped paragraph; the heading and body weights are set independently."""
     bold = _font(font_dir, "DejaVuSans-Bold.ttf", 22)
     regular = _font(font_dir, "DejaVuSans.ttf", 22)
-    words = [(word, bold) for word in heading.split()]
-    words += [(word, regular) for word in body.split()]
+    words = [(word, bold if heading_bold else regular) for word in heading.split()]
+    words += [(word, bold if body_bold else regular) for word in body.split()]
     left, right, line_height = 110, SIZE[0] - 110, 34
     x, y = left, top
     space = draw.textlength(" ", font=regular)
@@ -103,7 +111,7 @@ def _warning(draw, heading: str, body: str, top: int, font_dir: Path) -> None:
 
 @dataclass(frozen=True)
 class LabelSpec:
-    """Printed statements for one synthetic label with a bold warning heading."""
+    """Printed statements for one synthetic label; the heading is bold by default."""
 
     filename: str
     brand: str = "OLD TOM"
@@ -117,12 +125,16 @@ class LabelSpec:
     origin: str | None = None
     warning_heading: str = WARNING_HEADING
     warning_body: str = WARNING_BODY
+    heading_bold: bool = True
+    body_bold: bool = False
 
 
 SPECS = (
     LabelSpec("starter-clear.png"),
     LabelSpec("starter-warning-changed.png", warning_body=CHANGED_WARNING_BODY),
     LabelSpec("starter-warning-title-case.png", warning_heading="Government Warning:"),
+    LabelSpec("warning-heading-regular.png", heading_bold=False),
+    LabelSpec("warning-all-bold.png", body_bold=True),
     LabelSpec(
         "import-product-of.png",
         brand="HIGHLAND REEL",
@@ -183,6 +195,8 @@ def render(spec: LabelSpec, font_dir: Path) -> Image.Image:
         spec.warning_body,
         top=650 if len(lines) <= 3 else 700,
         font_dir=font_dir,
+        heading_bold=spec.heading_bold,
+        body_bold=spec.body_bold,
     )
     return image
 

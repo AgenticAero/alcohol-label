@@ -14,7 +14,9 @@ from alcohol_label.schemas import (
     ExtractionState,
     FieldId,
     Measurement,
+    StyleJudgement,
     Unit,
+    WarningStyleObservation,
 )
 
 _APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'", "`": "'"})
@@ -169,6 +171,137 @@ def compare_warning_heading_case(extracted: ExtractedField | None) -> CheckResul
         _WARNING_HEADING,
         extracted,
         "The Government Warning heading must be uppercase.",
+    )
+
+
+_STYLE_NOTE = "Judged from the image; physical type size is not assessed."
+_JUDGEMENT_WORDS = {
+    StyleJudgement.BOLD: "bold",
+    StyleJudgement.NOT_BOLD: "not bold",
+}
+
+
+def _style_result(
+    check: CheckId,
+    outcome: CheckOutcome,
+    expected: str,
+    observed: str | None,
+    explanation: str | None,
+    evidence: tuple[EvidenceRef, ...] = (),
+) -> CheckResult:
+    return CheckResult(
+        check_id=check,
+        outcome=outcome,
+        field_id=FieldId.WARNING_TEXT,
+        expected_value=expected,
+        observed_value=observed,
+        explanation=explanation,
+        evidence=evidence,
+    )
+
+
+def _compare_style(
+    check: CheckId,
+    part: str,
+    required: StyleJudgement,
+    styles: tuple[WarningStyleObservation, ...],
+    extracted: ExtractedField | None,
+) -> CheckResult:
+    """Judge one warning part; style counts only where the warning text was read."""
+    expected = _JUDGEMENT_WORDS[required]
+    review = CheckOutcome.NEEDS_REVIEW
+    if not styles:
+        return _style_result(
+            check,
+            review,
+            expected,
+            None,
+            f"No visual {part} weight assessment is available for this review "
+            "(the extraction adapter returned none); inspect the label image.",
+        )
+    read_at = {
+        o.image_id: index
+        for index, o in enumerate(extracted.observations if extracted else ())
+    }
+    usable = [s for s in styles if s.image_id in read_at]
+    if not usable:
+        images = ", ".join(sorted({s.image_id for s in styles}))
+        return _style_result(
+            check,
+            review,
+            expected,
+            None,
+            f"The warning text was not read in image {images}, where {part} "
+            "weight was assessed; inspect the label image.",
+        )
+    evidence = tuple(
+        EvidenceRef(FieldId.WARNING_TEXT, read_at[s.image_id], s.image_id)
+        for s in usable
+    )
+    judgements = [(s, getattr(s, part)) for s in usable]
+    unsure = [(s, j) for s, j in judgements if j is StyleJudgement.UNCERTAIN]
+    if unsure:
+        detail = "; ".join(f"image {s.image_id}: {s.reason}" for s, _ in unsure)
+        return _style_result(
+            check,
+            review,
+            expected,
+            None,
+            f"The visual {part} weight is uncertain ({detail}). "
+            "Inspect the label image.",
+            evidence,
+        )
+    seen = {j for _, j in judgements}
+    if len(seen) > 1:
+        listed = ", ".join(
+            f"image {s.image_id}: {_JUDGEMENT_WORDS[j]}" for s, j in judgements
+        )
+        return _style_result(
+            check,
+            review,
+            expected,
+            None,
+            f"Images disagree on {part} weight ({listed}); none was selected.",
+            evidence,
+        )
+    judgement = seen.pop()
+    observed = _JUDGEMENT_WORDS[judgement]
+    if judgement is required:
+        return _style_result(
+            check, CheckOutcome.MATCH, expected, observed, _STYLE_NOTE, evidence
+        )
+    return _style_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        expected,
+        observed,
+        f"The {part} appears {observed} in the image; it should be {expected}. "
+        + _STYLE_NOTE,
+        evidence,
+    )
+
+
+def compare_warning_heading_bold(
+    styles: tuple[WarningStyleObservation, ...],
+    extracted: ExtractedField | None,
+) -> CheckResult:
+    """Heading must look bold; unresolved style is never a pass."""
+    return _compare_style(
+        CheckId.WARNING_HEADING_BOLD, "heading", StyleJudgement.BOLD, styles, extracted
+    )
+
+
+def compare_warning_body_not_bold(
+    styles: tuple[WarningStyleObservation, ...],
+    extracted: ExtractedField | None,
+) -> CheckResult:
+    """Body must not look bold; unresolved style is never a pass."""
+    return _compare_style(
+        CheckId.WARNING_BODY_NOT_BOLD,
+        "body",
+        StyleJudgement.NOT_BOLD,
+        styles,
+        extracted,
     )
 
 

@@ -15,6 +15,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_body_not_bold,
+    compare_warning_heading_bold,
     compare_warning_heading_case,
     compare_warning_wording,
 )
@@ -26,6 +28,8 @@ from alcohol_label.schemas import (
     ExtractionState,
     FieldId,
     Observation,
+    StyleJudgement,
+    WarningStyleObservation,
     application_from_dict,
     application_to_dict,
 )
@@ -208,6 +212,71 @@ def test_annotations_agree_with_the_applications_and_the_warning_change():
     assert STARTERS["labels/starter-clear.png"]["provenance"]["defect"] is None
 
 
+@pytest.mark.parametrize(
+    ("scenario_id", "image_file", "heading_style", "body_style", "heading", "body"),
+    [
+        (
+            "S01-clear-match",
+            "labels/starter-clear.png",
+            "bold, uppercase",
+            "regular weight",
+            "match",
+            "match",
+        ),
+        (
+            "S17-warning-heading-not-bold",
+            "labels/warning-heading-regular.png",
+            "regular weight, uppercase",
+            "regular weight",
+            "discrepancy",
+            "match",
+        ),
+        (
+            "S18-warning-all-bold",
+            "labels/warning-all-bold.png",
+            "bold, uppercase",
+            "bold",
+            "match",
+            "discrepancy",
+        ),
+    ],
+)
+def test_font_weight_fixtures_pair_annotated_style_with_expected_outcomes(
+    scenario_id, image_file, heading_style, body_style, heading, body
+):
+    scenario = SCENARIOS[scenario_id]
+    entry = STARTERS[image_file]
+
+    assert scenario["image_files"] == [image_file]
+    assert entry["visible_style"] == {
+        "warning_heading": heading_style,
+        "warning_body": body_style,
+    }
+    outcomes = scenario["expected_outcomes"]
+    assert outcomes["warning_heading_bold"] == heading
+    assert outcomes["warning_body_not_bold"] == body
+    assert outcomes["warning_wording"] == "match"
+    assert outcomes["warning_heading_case"] == "match"
+
+
+def test_font_weight_fixtures_differ_from_clear_only_in_warning_weight():
+    clear = STARTERS["labels/starter-clear.png"]
+    baseline = _application("S01-clear-match")
+
+    for scenario_id, image_file in (
+        ("S17-warning-heading-not-bold", "labels/warning-heading-regular.png"),
+        ("S18-warning-all-bold", "labels/warning-all-bold.png"),
+    ):
+        entry = STARTERS[image_file]
+        assert entry["visible_text"] == clear["visible_text"]
+        assert entry["provenance"]["defect"]
+        assert SCENARIOS[scenario_id]["deliberate_defect"]
+        assert _differences(baseline, _application(scenario_id)) == {
+            "application_id",
+            "images",
+        }
+
+
 def _extracted(field_id: FieldId, text: str | None) -> ExtractedField:
     if text is None:
         return ExtractedField(
@@ -313,3 +382,35 @@ def test_review_of_annotated_label_text_matches_expected_field_outcomes(scenario
     }
     assert {c: got[c] for c in comparable} == {c: expected[c] for c in comparable}
     assert not response.all_clear
+
+
+@pytest.mark.parametrize(
+    "scenario_id",
+    ["S01-clear-match", "S17-warning-heading-not-bold", "S18-warning-all-bold"],
+)
+def test_style_comparators_reproduce_annotated_font_weight_outcomes(scenario_id):
+    """Offline: annotated pixels fed through the comparators, not live extraction."""
+    scenario = SCENARIOS[scenario_id]
+    entry = STARTERS[scenario["image_files"][0]]
+
+    def judged(text: str) -> StyleJudgement:
+        return (
+            StyleJudgement.BOLD if text.startswith("bold") else StyleJudgement.NOT_BOLD
+        )
+
+    style = WarningStyleObservation(
+        "front",
+        judged(entry["visible_style"]["warning_heading"]),
+        judged(entry["visible_style"]["warning_body"]),
+    )
+    text = entry["visible_text"]
+    warning = _extracted(
+        FieldId.WARNING_TEXT, f"{text['warning_heading']} {text['warning_body']}"
+    )
+
+    heading = compare_warning_heading_bold((style,), warning)
+    body = compare_warning_body_not_bold((style,), warning)
+
+    expected = scenario["expected_outcomes"]
+    assert heading.outcome.value == expected["warning_heading_bold"]
+    assert body.outcome.value == expected["warning_body_not_bold"]

@@ -118,7 +118,7 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 - `image_id` matches `ImageReference.image_id`. Images are not classified as front/back. Checking that an ID belongs to the supplied images is left to the verification boundary.
 - `EvidenceLocation` is a normalized `BoundingBox` (fractions 0 to 1 of image width/height), a `crop_ref` string, or both.
 - State rules: `observed` has one or more observations with identical raw text from distinct images; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
-- Boldness observations remain a separate later structure; a warning transcription cannot establish font weight.
+- Warning font weight is not a field: a transcription cannot establish it. `WarningStyleObservation(image_id, heading, body, reason)` in `schemas.py` records separate `StyleJudgement` values (`bold`, `not_bold`, `uncertain`) per image. An `uncertain` judgement requires a reason; there is no confidence score and no physical type-size field. An absent observation (adapter returned no style) is distinct from `uncertain`, so the comparison step can give each its own reason. Serialization uses `warning_style_to_dict` / `warning_style_from_dict`.
 
 `CheckResult` records one check outcome; it neither extracts nor compares. Decisions:
 
@@ -149,6 +149,15 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 | Derived `status` and `all_clear` rules. | Writing safe messages; the schema cannot prove a message is free of sensitive detail. |
 | Timeouts, blocked endpoints and invalid responses are `ProcessingError` codes, never outcomes. | Retry policy and resolving evidence references. |
 
+Warning font weight (AL-13), in `extraction.py`, `comparison.py`, `review.py` and `app.py`. Decisions:
+
+- Weight is judged by the same model request that transcribes the label (prompt `label-extraction-v4`, schema `label-observations-v2`): a required `warning_style` object with `heading`, `body` (`bold`, `not_bold`, `uncertain`) and `reason`. No extra request is made. The judgement is a model's visual reading of the original image, not measured stroke evidence, and no type size is assessed.
+- `ExtractionResult.warning_styles` holds one `WarningStyleObservation` per processed image. A response without `warning_style` yields no observation and no error; a malformed one is an `invalid_provider_response` error. `uncertain` with no provider reason gets a fixed reason.
+- `warning_heading_bold` matches on bold and is a discrepancy on not bold; `warning_body_not_bold` matches on not bold and is a discrepancy on bold. Style counts only for an image where the warning text was also read; evidence references point at that warning observation.
+- `needs_review`, each with its own reason: no style returned (adapter lacks support or did not answer), an `uncertain` judgement (provider reason quoted), images that disagree, or style only from an image where the warning text was not read. Processing errors still prevent every comparison.
+- The UI shows the original image with the reason for each style check in `needs_review` (every supplied image when none is linked), labelled as manual review. Reviewing it is not automated compliance.
+- Live evidence (`docs/evaluation.md`): 18 of 18 style outcomes matched the annotations on three clear synthetic fixtures, three runs each. This does not cover ambiguous, photographed or held-out labels.
+
 Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`. Decisions:
 
 - Hand-written `*_to_dict` / `*_from_dict` functions for `ApplicationData`, `ExtractedField`, `CheckResult`, `ProcessingError` and `ReviewResponse`; standard library only, no new dependency. Output is JSON-compatible: enums are their string values, tuples are lists, `raw_text` is kept verbatim, and `Decimal` is a string. Typed values are tagged (`{"decimal": "45.0"}`, `{"measurement": {"value": "750", "unit": "ml"}}`; plain strings stay strings), so `str`, `Decimal` and `Measurement` survive a round trip, including trailing zeros.
@@ -163,7 +172,7 @@ Intake (AL-7), in `src/alcohol_label/intake.py`, `review.py` and `app.py`. Decis
 - Form strings become `ApplicationData` in a UI-independent module. Blank text is `None`; a non-numeric, zero, negative or non-finite ABV or net-contents value is a readable error, not an exception. Blank required values are not errors; they surface through `missing_required_fields()`.
 - Uploads accept one or two JPEG/PNG files of at most 10 MiB and 20 megapixels that decode with Pillow. They become `ImageReference` records with generated IDs `image-1` and `image-2` and the file name as `uri`; no bytes are stored. Any upload error blocks Verify.
 - AL-8's image-only extraction adapter uses the OpenAI Responses API with strict structured output and `store: false`. It receives image references and bytes, never `ApplicationData` or expected values. Provider/model/prompt/schema identifiers accompany extraction results; provider failures use `ProcessingError`.
-- The Verify path displays extracted raw text, extraction state and source image ID. `review_after_extraction(application, processing_errors, fields)` dispatches the seven field comparisons and the AL-12 warning wording and heading-case checks to their comparators in `comparison.py`; the two warning-weight checks remain `not_evaluated` for AL-13, and domestic country of origin is `not_applicable`. A field with no extraction is `needs_review`, never a pass. When processing errors exist, no comparison runs and every check stays `not_evaluated`. Processing errors remain separate, and extraction alone is never a pass. The UI does not display `ReviewResponse.status`, because `complete` means every check has a result, not that any was evaluated.
+- The Verify path displays extracted raw text, extraction state and source image ID. `review_after_extraction(application, processing_errors, fields)` dispatches the seven field comparisons and the AL-12 warning wording and heading-case checks to their comparators in `comparison.py`; the two warning-weight checks use the AL-13 style comparators (see below), and domestic country of origin is `not_applicable`. A field with no extraction is `needs_review`, never a pass. When processing errors exist, no comparison runs and every check stays `not_evaluated`. Processing errors remain separate, and extraction alone is never a pass. The UI does not display `ReviewResponse.status`, because `complete` means every check has a result, not that any was evaluated.
 - Real extraction and hosted performance remain separate evaluation gates. Offline adapter tests do not establish extraction accuracy; see [evaluation.md](evaluation.md).
 
 #### Shared identifiers and states
@@ -172,7 +181,7 @@ These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label
 
 - `FieldId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, `warning_text`. `producer_name` and `producer_address` represent the producer/bottler information within prototype scope and are kept separate so extraction, comparison and explanations can differ (for example, name matches; address needs review). Use these names consistently in application and extraction models. `warning_text` is the raw warning transcription.
 - `CheckId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, plus four distinct warning checks: `warning_wording`, `warning_heading_case`, `warning_heading_bold`, `warning_body_not_bold`.
-- Visual observations supporting boldness checks are not fields. Transcription alone cannot establish font weight, so a later typed structure must preserve them separately from `FieldId`.
+- Visual observations supporting boldness checks are not fields. Transcription alone cannot establish font weight, so they use the separate `WarningStyleObservation` structure rather than a `FieldId`.
 
 `ExtractionState` describes what extraction found for a field:
 

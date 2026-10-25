@@ -1,10 +1,11 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.3",
+  "dataset_version": "starter-0.4",
   "notes": [
     "S01-S04 and S16 cover clear, brand-case, ABV, warning-word and warning-heading-case scenarios; S05-S15 exercise comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
     "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
+    "S17 and S18 differ from S01 only in warning font weight (non-bold heading; entirely bold warning). With S01 they form the three font-weight cases for AL-13; heading and body weight are annotated from the pixels, not inferred from the renderer settings.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
   ],
   "annotation": {
@@ -101,6 +102,66 @@
       "visible_style": {
         "warning_heading": "bold, title case",
         "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "warning-heading-regular",
+      "file": "labels/warning-heading-regular.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 72432,
+      "sha256": "420b5f5415d0f2db91d4027470576db258f0e9c4a8c5364683eb550679f06031",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The warning heading is printed in regular weight instead of bold; all other label content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "regular weight, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "warning-all-bold",
+      "file": "labels/warning-all-bold.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 72920,
+      "sha256": "086cad0a42ed8a6e97c8bdbabb0020231f6e356c3b1b30d70ab28c0e758c150e",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The entire warning, heading and body, is printed in bold; all other label content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "bold"
       }
     },
     {
@@ -478,6 +539,72 @@
         "warning_heading_case": "discrepancy",
         "warning_heading_bold": "match",
         "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S17-warning-heading-not-bold",
+      "description": "The warning wording and heading case are correct, but the heading is not bold.",
+      "split": "development",
+      "deliberate_defect": "The heading 'GOVERNMENT WARNING:' is printed in regular weight.",
+      "image_files": ["labels/warning-heading-regular.png"],
+      "application": {
+        "application_id": "S17-warning-heading-not-bold",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/warning-heading-regular.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "discrepancy",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S18-warning-all-bold",
+      "description": "The warning wording and heading case are correct, but the body is bold as well as the heading.",
+      "split": "development",
+      "deliberate_defect": "The entire warning, including the body, is printed in bold.",
+      "image_files": ["labels/warning-all-bold.png"],
+      "application": {
+        "application_id": "S18-warning-all-bold",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/warning-all-bold.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "discrepancy"
       }
     },
     {

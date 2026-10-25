@@ -1,4 +1,6 @@
-"""Check results: field comparisons after extraction; warning checks not yet run."""
+"""Check results: field and warning comparisons after extraction."""
+
+from collections.abc import Sequence
 
 from alcohol_label.comparison import (
     compare_alcohol_content,
@@ -8,6 +10,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_body_not_bold,
+    compare_warning_heading_bold,
     compare_warning_heading_case,
     compare_warning_wording,
 )
@@ -21,9 +25,6 @@ from alcohol_label.schemas import (
 )
 
 _NO_EXTRACTION = "Label extraction has not been run, so this check was not run."
-_NO_WARNING_CHECKS = (
-    "Warning checks are not implemented yet, so this check was not run."
-)
 _EXTRACTION_FAILED = (
     "Extraction failed for one or more images, so this check was not run."
 )
@@ -51,6 +52,10 @@ _WARNING_COMPARATORS = {
     CheckId.WARNING_WORDING: compare_warning_wording,
     CheckId.WARNING_HEADING_CASE: compare_warning_heading_case,
 }
+_STYLE_COMPARATORS = {
+    CheckId.WARNING_HEADING_BOLD: compare_warning_heading_bold,
+    CheckId.WARNING_BODY_NOT_BOLD: compare_warning_body_not_bold,
+}
 
 
 def _field_for(check_id: CheckId) -> FieldId:
@@ -69,15 +74,17 @@ def review_after_extraction(
     application: ApplicationData,
     processing_errors=(),
     fields=(),
+    warning_styles=(),
 ) -> ReviewResponse:
-    """Run the field comparisons; warning checks stay not evaluated.
+    """Run the field, warning text and warning style comparisons.
 
-    Any processing error prevents every comparison.
+    Any processing error prevents every comparison. Style that was not
+    returned or is unclear stays needs_review, so it is never a pass.
     """
     if processing_errors:
         return _review(application, _EXTRACTION_FAILED, processing_errors)
     extracted = {f.field_id: f for f in fields}
-    return _review(application, _NO_WARNING_CHECKS, (), extracted)
+    return _review(application, _NO_EXTRACTION, (), extracted, tuple(warning_styles))
 
 
 def _review(
@@ -85,6 +92,7 @@ def _review(
     pending_reason: str,
     processing_errors=(),
     extracted=None,
+    warning_styles=(),
 ) -> ReviewResponse:
     missing = set(application.missing_required_fields())
     results = []
@@ -98,6 +106,11 @@ def _review(
             continue
         if extracted is not None and check_id in _WARNING_COMPARATORS:
             results.append(_WARNING_COMPARATORS[check_id](extracted.get(field_id)))
+            continue
+        if extracted is not None and check_id in _STYLE_COMPARATORS:
+            results.append(
+                _STYLE_COMPARATORS[check_id](warning_styles, extracted.get(field_id))
+            )
             continue
         if domestic_origin:
             outcome = CheckOutcome.NOT_APPLICABLE
@@ -121,3 +134,21 @@ def _review(
         tuple(results),
         tuple(processing_errors),
     )
+
+
+def unresolved_style_checks(
+    response: ReviewResponse, all_image_ids: Sequence[str]
+) -> tuple[tuple[CheckResult, tuple[str, ...]], ...]:
+    """Style checks needing review, each with the image IDs a reviewer should open.
+
+    Uses the result's evidence images; with none, every supplied image.
+    """
+    items = []
+    for result in response.check_results:
+        if (
+            result.check_id in _STYLE_COMPARATORS
+            and result.outcome is CheckOutcome.NEEDS_REVIEW
+        ):
+            evidence_ids = tuple(dict.fromkeys(e.image_id for e in result.evidence))
+            items.append((result, evidence_ids or tuple(all_image_ids)))
+    return tuple(items)

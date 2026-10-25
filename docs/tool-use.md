@@ -142,6 +142,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** Focused comparison/review tests (146 passed); fixture suite (72 passed); `poetry run pytest -q` (331 passed); `poetry run ruff check .` and `poetry run ruff format --check .` passed. Re-ran `poetry run python tests/fixtures/render_starter_labels.py`; manifest image hashes verified by fixture tests, and the title-case PNG was visually inspected. Existing starter PNG hashes were unchanged.
 - **Pending checks / limitations:** Developer review of the new pixel annotations, live extraction accuracy and deployed smoke check remain pending. This branch has not been deployed. Visual boldness checks remain AL-13 scope.
 
+### 2026-10-25 — AL-13 warning font weight and visual uncertainty
+
+- **Tool / version:** GitHub Copilot (VS Code agent), Claude Sonnet 5.5; Atlassian MCP read-only Jira lookup; OpenAI Responses API (`gpt-6-luna`) for the live evaluation.
+- **Purpose:** Analyze AL-13, decompose it into six sub-tasks (AL-131 to AL-136, imported from a CSV the assistant drafted) and implement style fixtures, a separate style observation contract, extraction of weight in the existing request, comparators with explicit review paths, original-image evidence in the UI, and a live evaluation.
+- **Inputs:** AL-13 acceptance criteria, engineering plan, existing schemas, extraction, comparison, review and UI code, and fixture manifest.
+- **Output used:** `WarningStyleObservation`, prompt v4 / schema v2, the two style comparators, review wiring, the style review UI section, the two new synthetic labels with scenarios S17/S18, `scripts/al13_style_eval.py`, tests, and documentation updates.
+- **Human review / changes:** The developer approved the plan, the two synthetic fixtures, three live runs per fixture and distinct reasons for missing versus uncertain style, and committed each sub-task. The assistant viewed both new PNGs to annotate weight; developer review of those annotations is pending.
+- **Checks performed:** Offline `poetry run pytest` (381 passed), `poetry run ruff check .` and `poetry run ruff format --check .`; Streamlit `AppTest` load and style-review render; nine live runs recorded in `docs/evaluation.md`.
+- **Pending checks / limitations:** Live results cover only three clear synthetic images; no ambiguous, photographed or held-out example was run, and the uncertain path was not exercised live. The change has not been deployed or browser-tested, and hosted performance is unmeasured.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
