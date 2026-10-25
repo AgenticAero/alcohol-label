@@ -9,7 +9,15 @@ from PIL import Image
 
 from alcohol_label import extraction
 from alcohol_label.extraction import ProviderConfig, extract_application
-from alcohol_label.schemas import ErrorCode, ExtractionState, FieldId, ImageReference
+from alcohol_label.schemas import (
+    ErrorCode,
+    ExtractionState,
+    FieldId,
+    ImageReference,
+    StyleJudgement,
+)
+
+_NO_STYLE = object()
 
 
 def _image() -> bytes:
@@ -18,13 +26,19 @@ def _image() -> bytes:
     return buffer.getvalue()
 
 
-def _response(fields: dict | None = None) -> dict:
+def _response(fields: dict | None = None, style: object = None) -> dict:
     values = {
         field.value: {"text": f"value-{field.value}", "state": "observed"}
         for field in FieldId
     }
     if fields:
         values.update(fields)
+    if style is not _NO_STYLE:
+        values["warning_style"] = style or {
+            "heading": "bold",
+            "body": "not_bold",
+            "reason": None,
+        }
     return {
         "output": [
             {
@@ -277,7 +291,7 @@ def test_image_reference_and_payload_counts_must_match():
 
 
 def test_instructions_ask_for_separate_producer_name_and_address():
-    assert extraction._PROMPT_ID == "label-extraction-v3"
+    assert extraction._PROMPT_ID == "label-extraction-v4"
     text = extraction._INSTRUCTIONS
     assert "producer_name" in text and "producer_address" in text
     assert "without the role phrase" in text
@@ -314,7 +328,7 @@ def test_split_producer_line_is_observed_per_field(monkeypatch):
     )
     assert fields[FieldId.PRODUCER_ADDRESS].state is ExtractionState.OBSERVED
     assert fields[FieldId.PRODUCER_ADDRESS].observations[0].raw_text == "Louisville, KY"
-    assert result.metadata.prompt_id == "label-extraction-v3"
+    assert result.metadata.prompt_id == "label-extraction-v4"
 
 
 def test_unsplittable_producer_line_stays_uncertain_with_partial_reading(
@@ -337,3 +351,139 @@ def test_unsplittable_producer_line_stays_uncertain_with_partial_reading(
     assert address.state is ExtractionState.UNCERTAIN
     assert address.observations[0].raw_text == line
     assert address.explanation
+
+
+def test_request_asks_for_warning_style_in_the_same_single_request(monkeypatch):
+    bodies = []
+
+    def fake_urlopen(request, timeout):
+        bodies.append(json.loads(request.data))
+        return BytesIO(b'{"id":"response"}')
+
+    monkeypatch.setattr(extraction.urllib.request, "urlopen", fake_urlopen)
+
+    extraction._call_provider(_image(), _config())
+
+    assert len(bodies) == 1
+    schema = bodies[0]["text"]["format"]["schema"]
+    assert "warning_style" in schema["required"]
+    assert set(schema["properties"]["warning_style"]["required"]) == {
+        "heading",
+        "body",
+        "reason",
+    }
+    assert bodies[0]["text"]["format"]["name"] == "label-observations-v2"
+    assert bodies[0]["input"][0]["content"][0]["type"] == "input_text"
+
+
+def test_instructions_ask_for_weight_only_and_never_type_size():
+    text = extraction._INSTRUCTIONS
+    assert "warning_style" in text
+    assert "'bold' or 'not_bold'" in text
+    assert "do not estimate type size" in text.lower()
+
+
+def test_warning_styles_are_returned_per_image_with_source_image_id(monkeypatch):
+    responses = {
+        b"front": _response(
+            style={"heading": "bold", "body": "not_bold", "reason": None}
+        ),
+        b"back": _response(
+            style={"heading": "not_bold", "body": "bold", "reason": "Back image."}
+        ),
+    }
+    calls = []
+
+    def fake_call(data, config):
+        calls.append(data)
+        return responses[data]
+
+    monkeypatch.setattr(extraction, "_call_provider", fake_call)
+
+    result = extract_application(
+        [ImageReference("front", "front.png"), ImageReference("back", "back.png")],
+        [b"front", b"back"],
+        config=_config(),
+    )
+
+    assert sorted(calls) == [b"back", b"front"]
+    assert [
+        (s.image_id, s.heading, s.body, s.reason) for s in result.warning_styles
+    ] == [
+        ("front", StyleJudgement.BOLD, StyleJudgement.NOT_BOLD, None),
+        ("back", StyleJudgement.NOT_BOLD, StyleJudgement.BOLD, "Back image."),
+    ]
+    assert result.errors == ()
+
+
+def test_omitted_style_is_absent_not_uncertain_and_not_an_error(monkeypatch):
+    monkeypatch.setattr(
+        extraction,
+        "_call_provider",
+        lambda data, config: _response(style=_NO_STYLE),
+    )
+
+    result = extract_application(
+        [ImageReference("front", "front.png")], [b"front"], config=_config()
+    )
+
+    assert result.warning_styles == ()
+    assert result.errors == ()
+    warning = next(f for f in result.fields if f.field_id is FieldId.WARNING_TEXT)
+    assert warning.state is ExtractionState.OBSERVED
+
+
+def test_uncertain_style_keeps_provider_reason_and_supplies_one_if_missing(
+    monkeypatch,
+):
+    responses = iter(
+        [
+            {
+                "heading": "uncertain",
+                "body": "not_bold",
+                "reason": "Heading is blurred.",
+            },
+            {"heading": "bold", "body": "uncertain", "reason": None},
+        ]
+    )
+    monkeypatch.setattr(
+        extraction,
+        "_call_provider",
+        lambda data, config: _response(style=next(responses)),
+    )
+
+    first = extract_application(
+        [ImageReference("front", "front.png")], [b"front"], config=_config()
+    )
+    second = extract_application(
+        [ImageReference("front", "front.png")], [b"front"], config=_config()
+    )
+
+    assert first.warning_styles[0].reason == "Heading is blurred."
+    assert second.warning_styles[0].body is StyleJudgement.UNCERTAIN
+    assert second.warning_styles[0].reason
+
+
+@pytest.mark.parametrize(
+    "style",
+    [
+        {"heading": "heavy", "body": "not_bold", "reason": None},
+        {"heading": "bold", "body": "not_bold"},
+        {"heading": "bold", "body": "not_bold", "reason": 5},
+        {"heading": "bold", "body": "not_bold", "reason": None, "size": "9pt"},
+        "bold",
+    ],
+)
+def test_malformed_style_is_a_processing_error_not_an_uncertain_judgement(
+    monkeypatch, style
+):
+    monkeypatch.setattr(
+        extraction, "_call_provider", lambda data, config: _response(style=style)
+    )
+
+    result = extract_application(
+        [ImageReference("front", "front.png")], [b"front"], config=_config()
+    )
+
+    assert result.errors[0].code is ErrorCode.INVALID_PROVIDER_RESPONSE
+    assert result.warning_styles == ()

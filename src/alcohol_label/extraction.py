@@ -26,12 +26,15 @@ from alcohol_label.schemas import (
     Observation,
     ProcessingError,
     ProcessingStage,
+    StyleJudgement,
+    WarningStyleObservation,
 )
 
-_PROMPT_ID = "label-extraction-v3"
-_SCHEMA_ID = "label-observations-v1"
+_PROMPT_ID = "label-extraction-v4"
+_SCHEMA_ID = "label-observations-v2"
 _TIMEOUT_SECONDS = 60
 _FIELDS = tuple(FieldId)
+_STYLE_KEY = "warning_style"
 _FIELD_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -41,11 +44,24 @@ _FIELD_SCHEMA = {
         "state": {"type": "string", "enum": ["observed", "missing", "uncertain"]},
     },
 }
+_STYLE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["heading", "body", "reason"],
+    "properties": {
+        "heading": {"type": "string", "enum": [j.value for j in StyleJudgement]},
+        "body": {"type": "string", "enum": [j.value for j in StyleJudgement]},
+        "reason": {"type": ["string", "null"]},
+    },
+}
 _RESPONSE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": [field.value for field in _FIELDS],
-    "properties": {field.value: _FIELD_SCHEMA for field in _FIELDS},
+    "required": [*(field.value for field in _FIELDS), _STYLE_KEY],
+    "properties": {
+        **{field.value: _FIELD_SCHEMA for field in _FIELDS},
+        _STYLE_KEY: _STYLE_SCHEMA,
+    },
 }
 _INSTRUCTIONS = (
     "Transcribe the supported alcohol-label fields exactly as printed, "
@@ -63,7 +79,14 @@ _INSTRUCTIONS = (
     "'uncertain' and return the printed line as the partial raw reading. "
     "Return country_of_origin only from an explicit origin statement such as "
     "'Product of Scotland'; never infer it from an address, and use state "
-    "'missing' when no such statement is visible."
+    "'missing' when no such statement is visible. Also judge the visual "
+    "weight of the government warning in warning_style: set heading to "
+    "'bold' or 'not_bold' for the words 'GOVERNMENT WARNING', and body to "
+    "'bold' or 'not_bold' for the warning sentences that follow, comparing "
+    "stroke thickness of the heading with the body. Use 'uncertain' with a "
+    "short reason when the warning is not visible, is too small or blurry to "
+    "judge, or weight cannot be told apart reliably; use a null reason "
+    "otherwise. Judge weight only and do not estimate type size."
 )
 
 
@@ -111,6 +134,7 @@ class ExtractionResult:
     errors: tuple[ProcessingError, ...]
     metadata: ExtractionMetadata | None
     request_timings: tuple[ExtractionRequestTiming, ...] = ()
+    warning_styles: tuple[WarningStyleObservation, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +142,7 @@ class _ImageExtractionAttempt:
     fields: dict[FieldId, ExtractedField] | None
     error: Exception | None
     elapsed_seconds: float
+    style: WarningStyleObservation | None = None
 
 
 def _load_env_file() -> None:
@@ -203,13 +228,37 @@ def _output_text(response: dict) -> str:
     raise ValueError("provider response has no structured output")
 
 
-def _parse_fields(response: dict, image_id: str) -> dict[FieldId, ExtractedField]:
+def _parse_response(
+    response: dict, image_id: str
+) -> tuple[dict[FieldId, ExtractedField], WarningStyleObservation | None]:
     data = json.loads(_output_text(response))
     if not isinstance(data, dict):
         raise TypeError("provider fields must be an object")
+    # An absent style is not an error: it means no style was returned.
+    style_data = data.pop(_STYLE_KEY, None)
     if set(data) != {field.value for field in _FIELDS}:
         raise ValueError("provider fields do not match the extraction schema")
+    style = None if style_data is None else _parse_style(style_data, image_id)
+    return _parse_fields(data, image_id), style
 
+
+def _parse_style(item: object, image_id: str) -> WarningStyleObservation:
+    if not isinstance(item, dict) or set(item) != {"heading", "body", "reason"}:
+        raise ValueError("provider warning_style does not match the extraction schema")
+    try:
+        heading = StyleJudgement(item["heading"])
+        body = StyleJudgement(item["body"])
+    except (TypeError, ValueError) as error:
+        raise ValueError("provider returned an unsupported style judgement") from error
+    reason = item["reason"]
+    if reason is not None and not isinstance(reason, str):
+        raise TypeError("provider style reason must be a string or null")
+    if StyleJudgement.UNCERTAIN in (heading, body) and not (reason and reason.strip()):
+        reason = "The provider gave no reason for the uncertain style judgement."
+    return WarningStyleObservation(image_id, heading, body, reason)
+
+
+def _parse_fields(data: dict, image_id: str) -> dict[FieldId, ExtractedField]:
     fields = {}
     for field_id in _FIELDS:
         item = data[field_id.value]
@@ -258,10 +307,10 @@ def _extract_image(
         return _ImageExtractionAttempt(None, error, time.perf_counter() - started)
     elapsed_seconds = time.perf_counter() - started
     try:
-        fields = _parse_fields(response, image_id)
+        fields, style = _parse_response(response, image_id)
     except (TypeError, ValueError, json.JSONDecodeError) as error:
         return _ImageExtractionAttempt(None, error, elapsed_seconds)
-    return _ImageExtractionAttempt(fields, None, elapsed_seconds)
+    return _ImageExtractionAttempt(fields, None, elapsed_seconds, style)
 
 
 def _provider_error(error: Exception, image_id: str) -> ProcessingError:
@@ -371,6 +420,7 @@ def extract_application(
     per_image = []
     errors = []
     request_timings = []
+    styles = []
     with ThreadPoolExecutor(max_workers=len(image_references)) as executor:
         pending = [
             (
@@ -388,6 +438,10 @@ def extract_application(
                 errors.append(_provider_error(attempt.error, image_id))
             elif attempt.fields is not None:
                 per_image.append(attempt.fields)
+                if attempt.style is not None:
+                    styles.append(attempt.style)
 
     fields = _aggregate_fields(per_image, len(errors))
-    return ExtractionResult(fields, tuple(errors), metadata, tuple(request_timings))
+    return ExtractionResult(
+        fields, tuple(errors), metadata, tuple(request_timings), tuple(styles)
+    )
