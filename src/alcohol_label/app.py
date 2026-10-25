@@ -5,8 +5,14 @@ import streamlit as st
 
 from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
+from alcohol_label.presentation import (
+    check_label,
+    evidence_names,
+    image_names,
+    summarize,
+)
 from alcohol_label.review import review_after_extraction, unresolved_style_checks
-from alcohol_label.schemas import CheckOutcome, Measurement, Unit
+from alcohol_label.schemas import Measurement, Unit
 
 _VOLUME_UNITS = {
     "mL": Unit.MILLILITER,
@@ -163,30 +169,22 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         application, extraction.errors, extraction.fields, extraction.warning_styles
     )
     results = response.check_results
-    counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
-    if response.all_clear:
-        st.success("# :green[✔] Pass\n\nAll supported checks passed.")
+    summary = summarize(response)
+    names = image_names(application.images)
+    if summary.all_clear:
+        st.success(f"# :green[✔] {summary.headline}\n\n{summary.counts_text}")
     else:
-        extraction_status = (
-            " Extraction encountered processing failures." if extraction.errors else ""
-        )
+        problems = "\n\n".join(summary.problems)
         st.warning(
-            "# :red[✖] Not a pass\n\n"
-            f"{counts[CheckOutcome.DISCREPANCY]} discrepancy, "
-            f"{counts[CheckOutcome.NEEDS_REVIEW]} need review, "
-            f"{counts[CheckOutcome.NOT_EVALUATED]} not evaluated of "
-            f"{len(results)} checks.{extraction_status}"
+            f"# :red[✖] {summary.headline}\n\n{summary.counts_text}\n\n{problems}"
         )
     table = pd.DataFrame(
         {
-            "Check": [r.check_id.value.replace("_", " ") for r in results],
+            "Check": [check_label(r.check_id) for r in results],
             "Status": [r.outcome.value.replace("_", " ") for r in results],
             "Expected": [_display(r.expected_value) for r in results],
             "Observed": [_display(r.observed_value) for r in results],
-            "Evidence (image)": [
-                ", ".join(dict.fromkeys(e.image_id for e in r.evidence))
-                for r in results
-            ],
+            "Evidence (image)": [evidence_names(r, names) for r in results],
             "Reason": [r.explanation or "" for r in results],
         }
     )
@@ -196,7 +194,22 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
             subset=["Status"],
         )
     )
+    _show_label_previews(application, uploads, names)
     _show_style_review(application, uploads, response)
+
+
+def _show_label_previews(
+    application, uploads: list[UploadedImage], names: dict[str, str]
+) -> None:
+    st.subheader("Label images reviewed")
+    columns = st.columns(len(uploads))
+    for column, image, upload in zip(columns, application.images, uploads, strict=True):
+        column.image(
+            upload.data,
+            caption=f"{names[image.image_id]} is {image.image_id}",
+            alt=f"Label image {names[image.image_id]}",
+            width="stretch",
+        )
 
 
 def _show_style_review(application, uploads: list[UploadedImage], response) -> None:

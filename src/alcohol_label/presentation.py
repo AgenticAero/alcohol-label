@@ -1,8 +1,16 @@
 """Reviewer-facing summary of a review; no UI imports so it can be tested offline."""
 
+from collections import Counter
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from alcohol_label.schemas import CheckId, CheckOutcome, ReviewResponse
+from alcohol_label.schemas import (
+    CheckId,
+    CheckOutcome,
+    CheckResult,
+    ImageReference,
+    ReviewResponse,
+)
 
 _OUTCOME_WORDS = {
     CheckOutcome.MATCH: "matched",
@@ -15,6 +23,23 @@ _OUTCOME_WORDS = {
 
 def check_label(check_id: CheckId) -> str:
     return check_id.value.replace("_", " ")
+
+
+def image_names(images: Sequence[ImageReference]) -> dict[str, str]:
+    """Name shown per image ID: the file name, plus the ID when file names repeat."""
+    repeats = Counter(image.uri for image in images)
+    return {
+        image.image_id: (
+            image.uri if repeats[image.uri] == 1 else f"{image.uri} ({image.image_id})"
+        )
+        for image in images
+    }
+
+
+def evidence_names(result: CheckResult, names: Mapping[str, str]) -> str:
+    """Distinct evidence images of a result, in order, by display name."""
+    shown = (names.get(ref.image_id, ref.image_id) for ref in result.evidence)
+    return ", ".join(dict.fromkeys(shown))
 
 
 @dataclass(frozen=True, slots=True)

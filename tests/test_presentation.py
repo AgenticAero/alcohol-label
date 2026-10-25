@@ -1,6 +1,11 @@
 import pytest
 
-from alcohol_label.presentation import check_label, summarize
+from alcohol_label.presentation import (
+    check_label,
+    evidence_names,
+    image_names,
+    summarize,
+)
 from alcohol_label.schemas import (
     CheckId,
     CheckOutcome,
@@ -8,6 +13,7 @@ from alcohol_label.schemas import (
     ErrorCode,
     EvidenceRef,
     FieldId,
+    ImageReference,
     ProcessingError,
     ProcessingStage,
     ReviewResponse,
@@ -172,3 +178,40 @@ def test_empty_response_is_not_a_pass():
 
 def test_check_label_uses_plain_words():
     assert check_label(CheckId.WARNING_HEADING_BOLD) == "warning heading bold"
+
+
+def test_image_names_show_file_names_and_add_the_id_only_when_names_repeat():
+    distinct = (
+        ImageReference("image-1", "front.png"),
+        ImageReference("image-2", "b.jpg"),
+    )
+    repeated = (
+        ImageReference("image-1", "label.png"),
+        ImageReference("image-2", "label.png"),
+    )
+
+    assert image_names(distinct) == {"image-1": "front.png", "image-2": "b.jpg"}
+    assert image_names(repeated) == {
+        "image-1": "label.png (image-1)",
+        "image-2": "label.png (image-2)",
+    }
+
+
+def test_evidence_names_list_distinct_images_in_order_by_file_name():
+    names = {"image-1": "front.png", "image-2": "back.png"}
+    result = CheckResult(
+        CheckId.BRAND,
+        CheckOutcome.DISCREPANCY,
+        FieldId.BRAND,
+        explanation="Differs.",
+        evidence=(
+            EvidenceRef(FieldId.BRAND, 0, "image-2"),
+            EvidenceRef(FieldId.BRAND, 1, "image-1"),
+            EvidenceRef(FieldId.BRAND, 2, "image-2"),
+        ),
+    )
+    unresolved = _result(CheckId.CLASS_TYPE, CheckOutcome.NEEDS_REVIEW)
+
+    assert evidence_names(result, names) == "back.png, front.png"
+    assert evidence_names(unresolved, names) == ""
+    assert evidence_names(result, {}) == "image-2, image-1"
