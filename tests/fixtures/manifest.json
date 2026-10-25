@@ -195,6 +195,36 @@
       }
     },
     {
+      "image_id": "starter-clear-blur-r4",
+      "file": "labels/starter-clear-blur-r4.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 195978,
+      "sha256": "24d0494a42acd248b22b21a9aa711d2f48f978e7b772da726ba56673e97d0ef6",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "starter-clear.png (tests/fixtures/render_starter_labels.py) blurred whole-image; radius 4 per the file name, blur tool not recorded; not reproducible by the renderer",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The whole image is uniformly blurred; label content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase (blurred; heavier than the body to the eye)",
+        "warning_body": "regular weight (blurred)"
+      }
+    },
+    {
       "image_id": "import-product-of",
       "file": "labels/import-product-of.png",
       "format": "PNG",
@@ -1063,6 +1093,18 @@
         "source_type": "retailer product image",
         "permission": "Not confirmed; third-party content",
         "note": "Small image with very small warning text."
+      },
+      {
+        "file": "labels/J-Riley-Moonshine-cropped.jpg",
+        "format": "JPEG",
+        "width": 480,
+        "height": 235,
+        "bytes": 47311,
+        "sha256": "cc2584e4ad6f8f9b8a52568af7190a5278e7d66ad1e3eece88a684bc2fca3cfb",
+        "source_url": "https://craftshack.com/products/j-riley-moonshine",
+        "source_type": "retailer product image (cropped by the developer)",
+        "permission": "Not confirmed; third-party content",
+        "note": "Top part of J-Riley-Moonshine-750ML-BTL.jpg (480x235 of 480x480). Brand, 50% alc./vol. 100 proof, producer and 750 ml are visible; the government warning is cropped out. Intended for a missing-warning review case; no scenario or expected outcomes yet."
       },
       {
         "file": "labels/Cola-Detail-3.webp",
