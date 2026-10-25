@@ -8,7 +8,12 @@ from alcohol_label.schemas import (
     CheckId,
     CheckOutcome,
     CheckResult,
+    ErrorCode,
+    ExtractedField,
+    ExtractionState,
+    FieldId,
     ImageReference,
+    ProcessingError,
     ReviewResponse,
 )
 
@@ -113,3 +118,124 @@ def summarize(response: ReviewResponse) -> ReviewSummary:
         counts_text=counts_text,
         problems=tuple(problems),
     )
+
+
+_STYLE_CHECKS = frozenset({CheckId.WARNING_HEADING_BOLD, CheckId.WARNING_BODY_NOT_BOLD})
+
+
+def _field_name(field_id: FieldId) -> str:
+    if field_id is FieldId.WARNING_TEXT:
+        return "government warning"
+    return field_id.value.replace("_", " ")
+
+
+def evidence_actions(
+    response: ReviewResponse, fields: Sequence[ExtractedField]
+) -> tuple[str, ...]:
+    """What to do about each check that needs review, from how its field was read."""
+    states = {f.field_id: f.state for f in fields}
+    actions: list[str] = []
+    for result in response.check_results:
+        if result.outcome is not CheckOutcome.NEEDS_REVIEW or result.field_id is None:
+            continue
+        name = _field_name(result.field_id)
+        state = states.get(result.field_id)
+        if state is None or state is ExtractionState.MISSING:
+            action = (
+                f"The {name} was not found in the supplied images. Upload an "
+                "image that shows it, such as the other side of the label."
+            )
+        elif state is ExtractionState.UNCERTAIN:
+            action = (
+                f"The {name} could not be read reliably. Upload a clearer, "
+                "closer image of it."
+            )
+        elif state is ExtractionState.CONFLICTING:
+            action = (
+                f"The images show different readings of the {name}. Upload "
+                "only the image of the label being reviewed, or compare the "
+                "originals yourself."
+            )
+        elif result.check_id in _STYLE_CHECKS:
+            action = (
+                "The warning font weight could not be judged. Compare the "
+                "original image yourself, or upload a sharper image of the "
+                "warning."
+            )
+        else:
+            action = (
+                f"Check the {check_label(result.check_id)} in the original "
+                "image yourself; the label text was ambiguous. See the reason "
+                "in the results."
+            )
+        if action not in actions:
+            actions.append(action)
+    return tuple(actions)
+
+
+_RETRY_NOTE = "Your entries and images are kept; use Retry to run Verify again."
+_FAILURE_ACTIONS = {
+    ErrorCode.RATE_LIMITED: "The extraction service is busy. Wait a moment, then retry.",
+    ErrorCode.PROVIDER_TIMEOUT: "The extraction service took too long to answer.",
+    ErrorCode.ENDPOINT_BLOCKED: (
+        "The extraction service could not be reached. Check the network connection."
+    ),
+    ErrorCode.INVALID_PROVIDER_RESPONSE: (
+        "The extraction service gave an unusable answer. Click Verify again; "
+        "if it repeats, report it with the application ID."
+    ),
+    ErrorCode.IMAGE_UNREADABLE: (
+        "An image could not be read. Replace it with a clearer JPEG or PNG, "
+        "then click Verify."
+    ),
+    ErrorCode.INTERNAL_ERROR: (
+        "Verification could not run, and retrying will not fix this. Ask an "
+        "administrator to check the extraction service settings."
+    ),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class FailureGuidance:
+    lines: tuple[str, ...]
+    can_retry: bool
+
+
+def failure_guidance(errors: Sequence[ProcessingError]) -> FailureGuidance:
+    """Next steps for processing failures; names no provider, URL or credential."""
+    if not errors:
+        return FailureGuidance((), False)
+    lines = list(dict.fromkeys(_FAILURE_ACTIONS[e.code] for e in errors))
+    can_retry = any(e.retryable for e in errors)
+    if can_retry:
+        lines.append(_RETRY_NOTE)
+    return FailureGuidance(tuple(lines), can_retry)
+
+
+def missing_values_note(missing_fields: Sequence[FieldId]) -> str | None:
+    """Missing expected values do not block Verify; those checks stay not evaluated."""
+    if not missing_fields:
+        return None
+    names = ", ".join(_field_name(f) for f in missing_fields)
+    return (
+        f"Expected values not entered: {names}. Enter them to run those "
+        "checks; until then they are not evaluated."
+    )
+
+
+def input_error_actions(errors: Sequence[str]) -> tuple[str, ...]:
+    """Each input problem followed by what to fix."""
+    lines = []
+    for error in errors:
+        if error.endswith("is required."):
+            fix = "Enter it, then click Verify."
+        elif error.startswith("Upload at least"):
+            fix = "Choose a label image, then click Verify."
+        elif error.startswith("Upload at most"):
+            fix = "Remove the extra images, then click Verify."
+        elif "number" in error or "greater than zero" in error:
+            fix = "Correct the value, then click Verify."
+        else:
+            fix = "Replace or remove that file, then click Verify."
+        lines.append(f"{error} {fix}")
+    return tuple(lines)

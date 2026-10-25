@@ -7,8 +7,12 @@ from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
 from alcohol_label.presentation import (
     check_label,
+    evidence_actions,
     evidence_names,
+    failure_guidance,
     image_names,
+    input_error_actions,
+    missing_values_note,
     summarize,
 )
 from alcohol_label.review import review_after_extraction, unresolved_style_checks
@@ -43,6 +47,10 @@ def _clear_form() -> None:
     st.session_state["is_imported"] = False
     # A new key is the only way to empty a file uploader.
     st.session_state["upload_version"] = st.session_state.get("upload_version", 0) + 1
+
+
+def _request_retry() -> None:
+    st.session_state["retry_verify"] = True
 
 
 def main() -> None:
@@ -92,7 +100,9 @@ def main() -> None:
     verify_col, clear_col, _ = st.columns([1, 1, 4])
     verify = verify_col.button("Verify", type="primary")
     clear_col.button("Clear form", on_click=_clear_form)
-    if verify:
+    # Retry sets a flag because Streamlit reruns the script on every click.
+    retry = st.session_state.pop("retry_verify", False)
+    if verify or retry:
         result = build_application(
             application_id=application_id,
             brand=brand,
@@ -106,13 +116,12 @@ def main() -> None:
             country_of_origin=country_of_origin,
             uploads=uploads,
         )
-        if result.missing_fields:
-            names = ", ".join(f.value.replace("_", " ") for f in result.missing_fields)
-            st.error(f"Missing expected values: {names}")
-        if result.errors:
-            for error in result.errors:
-                st.error(error)
-        else:
+        note = missing_values_note(result.missing_fields)
+        if note:
+            st.warning(note)
+        for line in input_error_actions(result.errors):
+            st.error(line)
+        if not result.errors:
             with st.spinner("Reading text from label images..."):
                 _show_review(result.application, uploads)
 
@@ -178,6 +187,14 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         st.warning(
             f"# :red[✖] {summary.headline}\n\n{summary.counts_text}\n\n{problems}"
         )
+    guidance = failure_guidance(extraction.errors)
+    next_steps = (*guidance.lines, *evidence_actions(response, extraction.fields))
+    if next_steps:
+        st.subheader("What to do next")
+        for step in next_steps:
+            st.markdown(f"- {step}")
+    if guidance.can_retry:
+        st.button("Retry", key="retry_button", on_click=_request_retry)
     table = pd.DataFrame(
         {
             "Check": [check_label(r.check_id) for r in results],
