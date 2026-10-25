@@ -262,6 +262,41 @@ class ExtractedField:
             raise ValueError(f"{self.state.value} requires an explanation")
 
 
+class StyleJudgement(StrEnum):
+    """Visual weight judgement for one part of the warning in one image."""
+
+    BOLD = "bold"
+    NOT_BOLD = "not_bold"
+    UNCERTAIN = "uncertain"
+
+
+@dataclass(frozen=True, slots=True)
+class WarningStyleObservation:
+    """Heading and body weight seen in one image; not a transcription field.
+
+    Weight is judged from the image, relative between heading and body. No
+    confidence score and no physical type size are carried. An uncertain
+    judgement needs a reason so a reviewer knows what to look at.
+    """
+
+    image_id: str
+    heading: StyleJudgement
+    body: StyleJudgement
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.image_id, str) or not self.image_id.strip():
+            raise ValueError("image_id must not be blank")
+        for judgement in (self.heading, self.body):
+            if not isinstance(judgement, StyleJudgement):
+                raise TypeError("judgements must be StyleJudgement values")
+        if self.reason is not None and not isinstance(self.reason, str):
+            raise TypeError("reason must be a string or None")
+        uncertain = StyleJudgement.UNCERTAIN in (self.heading, self.body)
+        if uncertain and not (self.reason and self.reason.strip()):
+            raise ValueError("an uncertain judgement requires a reason")
+
+
 _CHECK_FIELD: dict[CheckId, FieldId] = {
     CheckId.BRAND: FieldId.BRAND,
     CheckId.CLASS_TYPE: FieldId.CLASS_TYPE,
@@ -607,6 +642,28 @@ def extracted_field_from_dict(data: dict) -> ExtractedField:
         ),
         data,
         "extracted field",
+    )
+
+
+def warning_style_to_dict(style: WarningStyleObservation) -> dict:
+    return {
+        "image_id": style.image_id,
+        "heading": style.heading.value,
+        "body": style.body.value,
+        "reason": style.reason,
+    }
+
+
+def warning_style_from_dict(data: dict) -> WarningStyleObservation:
+    return _guard(
+        lambda d: WarningStyleObservation(
+            image_id=d["image_id"],
+            heading=StyleJudgement(d["heading"]),
+            body=StyleJudgement(d["body"]),
+            reason=d.get("reason"),
+        ),
+        data,
+        "warning style",
     )
 
 

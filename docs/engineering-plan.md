@@ -118,7 +118,7 @@ Use `null` and explicit states for unknowns. Do not manufacture a confidence per
 - `image_id` matches `ImageReference.image_id`. Images are not classified as front/back. Checking that an ID belongs to the supplied images is left to the verification boundary.
 - `EvidenceLocation` is a normalized `BoundingBox` (fractions 0 to 1 of image width/height), a `crop_ref` string, or both.
 - State rules: `observed` has one or more observations with identical raw text from distinct images; `missing` has none; `uncertain` may carry unreliable candidates; `conflicting` keeps two or more differing observations and never selects one. Every state except `observed` requires an explanation. No confidence value is stored.
-- Boldness observations remain a separate later structure; a warning transcription cannot establish font weight.
+- Warning font weight is not a field: a transcription cannot establish it. `WarningStyleObservation(image_id, heading, body, reason)` in `schemas.py` records separate `StyleJudgement` values (`bold`, `not_bold`, `uncertain`) per image. An `uncertain` judgement requires a reason; there is no confidence score and no physical type-size field. An absent observation (adapter returned no style) is distinct from `uncertain`, so the comparison step can give each its own reason. Serialization uses `warning_style_to_dict` / `warning_style_from_dict`.
 
 `CheckResult` records one check outcome; it neither extracts nor compares. Decisions:
 
@@ -172,7 +172,7 @@ These are `StrEnum` types with lowercase snake_case values in `src/alcohol_label
 
 - `FieldId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, `warning_text`. `producer_name` and `producer_address` represent the producer/bottler information within prototype scope and are kept separate so extraction, comparison and explanations can differ (for example, name matches; address needs review). Use these names consistently in application and extraction models. `warning_text` is the raw warning transcription.
 - `CheckId`: `brand`, `class_type`, `alcohol_content`, `net_contents`, `producer_name`, `producer_address`, `country_of_origin`, plus four distinct warning checks: `warning_wording`, `warning_heading_case`, `warning_heading_bold`, `warning_body_not_bold`.
-- Visual observations supporting boldness checks are not fields. Transcription alone cannot establish font weight, so a later typed structure must preserve them separately from `FieldId`.
+- Visual observations supporting boldness checks are not fields. Transcription alone cannot establish font weight, so they use the separate `WarningStyleObservation` structure rather than a `FieldId`.
 
 `ExtractionState` describes what extraction found for a field:
 
