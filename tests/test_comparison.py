@@ -10,6 +10,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_heading_case,
+    compare_warning_wording,
     parse_percentages,
     parse_volumes,
     strip_origin_phrase,
@@ -105,6 +107,72 @@ def _text_field(field_id: FieldId, text: str) -> ExtractedField:
     return ExtractedField(
         field_id, ExtractionState.OBSERVED, (Observation(text, "front"),)
     )
+
+
+_CANONICAL_WARNING = (
+    "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not "
+    "drink alcoholic beverages during pregnancy because of the risk of birth "
+    "defects. (2) Consumption of alcoholic beverages impairs your ability to "
+    "drive a car or operate machinery, and may cause health problems."
+)
+
+
+def _warning_field(text: str) -> ExtractedField:
+    return _text_field(FieldId.WARNING_TEXT, text)
+
+
+def test_warning_wording_matches_after_layout_whitespace_only():
+    result = compare_warning_wording(
+        _warning_field(_CANONICAL_WARNING.replace(" (2)", "\r\n\t(2)"))
+    )
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.observed_value == _CANONICAL_WARNING.replace(" (2)", "\r\n\t(2)")
+    assert result.evidence[0].field_id is FieldId.WARNING_TEXT
+
+
+def test_warning_wording_detects_changed_word_without_autocorrection():
+    changed = _CANONICAL_WARNING.replace("impairs", "affects")
+    result = compare_warning_wording(_warning_field(changed))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert result.observed_value == changed
+    assert "27 CFR 16.21" in result.explanation
+    assert result.evidence[0].image_id == "front"
+
+    omitted = _CANONICAL_WARNING.replace("impairs ", "")
+    assert compare_warning_wording(_warning_field(omitted)).outcome is (
+        CheckOutcome.DISCREPANCY
+    )
+
+
+def test_warning_heading_case_is_independent_and_requires_original_uppercase():
+    title_case = _CANONICAL_WARNING.replace("GOVERNMENT WARNING", "Government Warning")
+    result = compare_warning_heading_case(_warning_field(title_case))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert result.observed_value == title_case
+    assert compare_warning_heading_case(_warning_field(_CANONICAL_WARNING)).outcome is (
+        CheckOutcome.MATCH
+    )
+    lookalike = _CANONICAL_WARNING.replace(
+        "GOVERNMENT WARNING", "GOVERNMENT WARNINGNESS"
+    )
+    assert compare_warning_heading_case(_warning_field(lookalike)).outcome is (
+        CheckOutcome.DISCREPANCY
+    )
+
+
+@pytest.mark.parametrize(
+    "compare", [compare_warning_wording, compare_warning_heading_case]
+)
+def test_warning_checks_require_observed_complete_evidence(compare):
+    missing = ExtractedField(
+        FieldId.WARNING_TEXT, ExtractionState.MISSING, (), "No warning found."
+    )
+    uncertain = ExtractedField(
+        FieldId.WARNING_TEXT, ExtractionState.UNCERTAIN, (), "Text is unreadable."
+    )
+    assert compare(None).outcome is CheckOutcome.NEEDS_REVIEW
+    assert compare(missing).outcome is CheckOutcome.NEEDS_REVIEW
+    assert compare(uncertain).outcome is CheckOutcome.NEEDS_REVIEW
 
 
 @pytest.mark.parametrize(

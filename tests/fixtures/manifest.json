@@ -1,15 +1,15 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.2",
+  "dataset_version": "starter-0.3",
   "notes": [
-    "Starter set of four scenarios built from two synthetic labels (S01 to S04), extended with scenarios S05 to S15 on seven more synthetic labels that exercise the field comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
+    "S01-S04 and S16 cover clear, brand-case, ABV, warning-word and warning-heading-case scenarios; S05-S15 exercise comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
     "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
   ],
   "annotation": {
     "annotator": "GitHub Copilot (VS Code agent), viewing the PNG pixels",
-    "date": "2026-10-22",
+    "date": "2026-10-24",
     "developer_review": "pending"
   },
   "images": [
@@ -70,6 +70,36 @@
       },
       "visible_style": {
         "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "starter-warning-title-case",
+      "file": "labels/starter-warning-title-case.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 73105,
+      "sha256": "e728d367293e78031fedfc9805d08d843d97352d8818fe7ad5bac82588678674",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Warning heading is printed as 'Government Warning:' instead of uppercase; all other label content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "Government Warning:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, title case",
         "warning_body": "regular weight"
       }
     },
@@ -413,6 +443,39 @@
         "country_of_origin": "not_applicable",
         "warning_wording": "discrepancy",
         "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S16-warning-heading-title-case",
+      "description": "The warning wording is otherwise correct, but the heading is title case.",
+      "split": "development",
+      "deliberate_defect": "The heading reads 'Government Warning:' rather than uppercase 'GOVERNMENT WARNING:'.",
+      "image_files": ["labels/starter-warning-title-case.png"],
+      "application": {
+        "application_id": "S16-warning-heading-title-case",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-warning-title-case.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "discrepancy",
+        "warning_heading_case": "discrepancy",
         "warning_heading_bold": "match",
         "warning_body_not_bold": "match"
       }

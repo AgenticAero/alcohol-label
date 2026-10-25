@@ -102,6 +102,13 @@ def _fields(**texts):
         FieldId.PRODUCER_NAME: "Stone Distilling",
         FieldId.PRODUCER_ADDRESS: "Louisville, KY",
         FieldId.COUNTRY_OF_ORIGIN: None,
+        FieldId.WARNING_TEXT: (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, women "
+            "should not drink alcoholic beverages during pregnancy because of "
+            "the risk of birth defects. (2) Consumption of alcoholic beverages "
+            "impairs your ability to drive a car or operate machinery, and may "
+            "cause health problems."
+        ),
     }
     values.update({FieldId(k): v for k, v in texts.items()})
     fields = []
@@ -131,19 +138,43 @@ WARNING_CHECKS = (
 )
 
 
-def test_review_runs_every_field_comparison_and_leaves_warnings_unevaluated():
+def test_review_runs_field_and_warning_text_checks_but_leaves_style_unevaluated():
     response = review_after_extraction(_application(), (), _fields())
     results = _results(response)
 
     for check in CheckId:
-        if check in WARNING_CHECKS:
+        if check in {CheckId.WARNING_HEADING_BOLD, CheckId.WARNING_BODY_NOT_BOLD}:
             assert results[check].outcome is CheckOutcome.NOT_EVALUATED
+        elif check in {CheckId.WARNING_WORDING, CheckId.WARNING_HEADING_CASE}:
+            assert results[check].outcome is CheckOutcome.MATCH
+            assert results[check].evidence[0].image_id == "front"
         elif check is CheckId.COUNTRY_OF_ORIGIN:
             assert results[check].outcome is CheckOutcome.NOT_APPLICABLE
         else:
             assert results[check].outcome is CheckOutcome.MATCH, check
             assert results[check].evidence[0].image_id == "front"
     assert not response.all_clear
+
+
+def test_warning_conflict_across_images_needs_review_with_both_evidence_sources():
+    fields = list(_fields())
+    fields = [field for field in fields if field.field_id is not FieldId.WARNING_TEXT]
+    fields.append(
+        ExtractedField(
+            FieldId.WARNING_TEXT,
+            ExtractionState.CONFLICTING,
+            (
+                Observation("GOVERNMENT WARNING: The canonical text.", "front"),
+                Observation("GOVERNMENT WARNING: A changed warning.", "back"),
+            ),
+            "Supplied images contain differing readings.",
+        )
+    )
+    results = _results(review_after_extraction(_application(), (), tuple(fields)))
+
+    for check in (CheckId.WARNING_WORDING, CheckId.WARNING_HEADING_CASE):
+        assert results[check].outcome is CheckOutcome.NEEDS_REVIEW
+        assert [item.image_id for item in results[check].evidence] == ["front", "back"]
 
 
 @pytest.mark.parametrize(

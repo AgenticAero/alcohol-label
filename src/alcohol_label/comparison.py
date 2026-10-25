@@ -18,6 +18,16 @@ from alcohol_label.schemas import (
 )
 
 _APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'", "`": "'"})
+_WARNING_TEXT = (
+    "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not "
+    "drink alcoholic beverages during pregnancy because of the risk of birth "
+    "defects. (2) Consumption of alcoholic beverages impairs your ability to "
+    "drive a car or operate machinery, and may cause health problems."
+)
+_WARNING_SOURCE = (
+    "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-16/section-16.21"
+)
+_WARNING_HEADING = "GOVERNMENT WARNING"
 
 
 def normalize_brand(text: str) -> str:
@@ -106,6 +116,60 @@ def compare_producer_name(
     expected: str | None, extracted: ExtractedField | None
 ) -> CheckResult:
     return compare_text(CheckId.PRODUCER_NAME, expected, extracted)
+
+
+def _normalize_layout_whitespace(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def compare_warning_wording(extracted: ExtractedField | None) -> CheckResult:
+    """Compare the complete warning to the reviewed eCFR text, ignoring layout whitespace."""
+    check = CheckId.WARNING_WORDING
+    unresolved = unresolved_result(check, _WARNING_TEXT, extracted)
+    if unresolved is not None:
+        return unresolved
+    observed = extracted.observations[0].raw_text
+    if _normalize_layout_whitespace(observed) == _normalize_layout_whitespace(
+        _WARNING_TEXT
+    ):
+        return build_result(check, CheckOutcome.MATCH, _WARNING_TEXT, extracted, None)
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        _WARNING_TEXT,
+        extracted,
+        f"Observed warning wording differs from the canonical text in 27 CFR 16.21 ({_WARNING_SOURCE}).",
+    )
+
+
+def compare_warning_heading_case(extracted: ExtractedField | None) -> CheckResult:
+    """Check uppercase heading independently from the complete warning wording."""
+    check = CheckId.WARNING_HEADING_CASE
+    unresolved = unresolved_result(check, _WARNING_HEADING, extracted)
+    if unresolved is not None:
+        return unresolved
+    observed = extracted.observations[0].raw_text
+    normalized = _normalize_layout_whitespace(observed)
+    heading = re.match(r"government\s+warning(?=[:\s]|$)", normalized, re.IGNORECASE)
+    if heading is None:
+        return build_result(
+            check,
+            CheckOutcome.DISCREPANCY,
+            _WARNING_HEADING,
+            extracted,
+            "The required Government Warning heading was not found at the start of the observed warning.",
+        )
+    if heading.group() == _WARNING_HEADING:
+        return build_result(
+            check, CheckOutcome.MATCH, _WARNING_HEADING, extracted, None
+        )
+    return build_result(
+        check,
+        CheckOutcome.DISCREPANCY,
+        _WARNING_HEADING,
+        extracted,
+        "The Government Warning heading must be uppercase.",
+    )
 
 
 _PERCENT = re.compile(r"(\d+(?:\.\d+)?|\.\d+)\s*(?:%|percent\b)", re.IGNORECASE)
@@ -400,7 +464,11 @@ def build_result(
     observed: str | Measurement | None = None,
 ) -> CheckResult:
     """Build a result with one evidence reference per observation."""
-    field_id = FieldId(check_id.value)
+    field_id = (
+        FieldId.WARNING_TEXT
+        if check_id.value.startswith("warning_")
+        else FieldId(check_id.value)
+    )
     observations = extracted.observations if extracted else ()
     if observed is None:
         observed = " | ".join(dict.fromkeys(o.raw_text for o in observations)) or None

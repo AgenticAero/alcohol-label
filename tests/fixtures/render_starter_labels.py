@@ -12,9 +12,9 @@ directory is /usr/share/fonts/truetype/dejavu. For another installation, use:
 
 Using the committed PNG fixtures does not require these fonts.
 
-All labels are fictional. The two starter labels are identical except for one
-deliberately changed word in the government warning; the others vary one printed
-statement (origin, net contents, alcohol, producer lines) for comparison rules.
+All labels are fictional. Starter variants exercise a changed warning word and a
+title-case warning heading; the others vary one printed statement (origin, net
+contents, alcohol, producer lines) for comparison rules.
 The committed PNGs are the source of truth: output depends on the installed DejaVu fonts, so re-rendering on another
 machine may differ slightly. Check hashes in manifest.json after re-rendering.
 """
@@ -84,11 +84,11 @@ def _centered(draw, y, text, font, fill=INK):
     draw.text(((SIZE[0] - width) / 2, y), text, font=font, fill=fill)
 
 
-def _warning(draw, body: str, top: int, font_dir: Path) -> None:
+def _warning(draw, heading: str, body: str, top: int, font_dir: Path) -> None:
     """Wrapped paragraph: bold uppercase heading, regular-weight body."""
     bold = _font(font_dir, "DejaVuSans-Bold.ttf", 22)
     regular = _font(font_dir, "DejaVuSans.ttf", 22)
-    words = [(WARNING_HEADING.split()[0], bold), (WARNING_HEADING.split()[1], bold)]
+    words = [(word, bold) for word in heading.split()]
     words += [(word, regular) for word in body.split()]
     left, right, line_height = 110, SIZE[0] - 110, 34
     x, y = left, top
@@ -103,7 +103,7 @@ def _warning(draw, body: str, top: int, font_dir: Path) -> None:
 
 @dataclass(frozen=True)
 class LabelSpec:
-    """Printed statements for one synthetic label; the warning is always bold-headed."""
+    """Printed statements for one synthetic label with a bold warning heading."""
 
     filename: str
     brand: str = "OLD TOM"
@@ -115,12 +115,14 @@ class LabelSpec:
         "Louisville, KY",
     )
     origin: str | None = None
+    warning_heading: str = WARNING_HEADING
     warning_body: str = WARNING_BODY
 
 
 SPECS = (
     LabelSpec("starter-clear.png"),
     LabelSpec("starter-warning-changed.png", warning_body=CHANGED_WARNING_BODY),
+    LabelSpec("starter-warning-title-case.png", warning_heading="Government Warning:"),
     LabelSpec(
         "import-product-of.png",
         brand="HIGHLAND REEL",
@@ -176,7 +178,11 @@ def render(spec: LabelSpec, font_dir: Path) -> Image.Image:
     for index, line in enumerate(lines):
         _centered(draw, 500 + 45 * index, line, small)
     _warning(
-        draw, spec.warning_body, top=650 if len(lines) <= 3 else 700, font_dir=font_dir
+        draw,
+        spec.warning_heading,
+        spec.warning_body,
+        top=650 if len(lines) <= 3 else 700,
+        font_dir=font_dir,
     )
     return image
 

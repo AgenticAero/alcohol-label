@@ -15,6 +15,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_heading_case,
+    compare_warning_wording,
 )
 from alcohol_label.schemas import (
     ApplicationData,
@@ -108,13 +110,14 @@ def test_expected_outcomes_cover_every_check_with_valid_outcomes():
         assert (country == "not_applicable") is (not imported)
 
 
-def test_starter_scenarios_cover_the_four_required_cases():
+def test_starter_scenarios_cover_required_comparison_and_warning_cases():
     baseline = _application("S01-clear-match")
     assert {
         "S01-clear-match",
         "S02-brand-case-only",
         "S03-abv-mismatch",
         "S04-warning-text-changed",
+        "S16-warning-heading-title-case",
     } <= set(SCENARIOS)
     other_than_match = {
         sid: {c for c, o in s["expected_outcomes"].items() if o != "match"}
@@ -129,6 +132,11 @@ def test_starter_scenarios_cover_the_four_required_cases():
     assert other_than_match["S04-warning-text-changed"] == {
         "country_of_origin",
         "warning_wording",
+    }
+    assert other_than_match["S16-warning-heading-title-case"] == {
+        "country_of_origin",
+        "warning_wording",
+        "warning_heading_case",
     }
 
     brand_case = _application("S02-brand-case-only")
@@ -179,6 +187,12 @@ def test_annotations_agree_with_the_applications_and_the_warning_change():
         assert (
             STARTERS[name]["visible_text"]["warning_heading"] == "GOVERNMENT WARNING:"
         )
+    title_case = STARTERS["labels/starter-warning-title-case.png"]
+    assert title_case["visible_text"]["warning_heading"] == "Government Warning:"
+    assert title_case["visible_style"] == {
+        "warning_heading": "bold, title case",
+        "warning_body": "regular weight",
+    }
     outcomes = SCENARIOS["S01-clear-match"]["expected_outcomes"]
     for check in (
         "warning_heading_case",
@@ -204,6 +218,33 @@ def _extracted(field_id: FieldId, text: str | None) -> ExtractedField:
     )
 
 
+@pytest.mark.parametrize(
+    ("image_file", "expected_wording", "expected_heading_case"),
+    [
+        ("labels/starter-clear.png", CheckOutcome.MATCH, CheckOutcome.MATCH),
+        (
+            "labels/starter-warning-changed.png",
+            CheckOutcome.DISCREPANCY,
+            CheckOutcome.MATCH,
+        ),
+        (
+            "labels/starter-warning-title-case.png",
+            CheckOutcome.DISCREPANCY,
+            CheckOutcome.DISCREPANCY,
+        ),
+    ],
+)
+def test_warning_text_checks_match_starter_annotations(
+    image_file, expected_wording, expected_heading_case
+):
+    image = STARTERS[image_file]["visible_text"]
+    warning = f"{image['warning_heading']} {image['warning_body']}"
+    extracted = _extracted(FieldId.WARNING_TEXT, warning)
+
+    assert compare_warning_wording(extracted).outcome is expected_wording
+    assert compare_warning_heading_case(extracted).outcome is expected_heading_case
+
+
 @pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
 def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
     """Offline check of the comparison rules against annotated pixels, not extraction."""
@@ -212,6 +253,10 @@ def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
 
     def field(field_id: FieldId) -> ExtractedField:
         return _extracted(field_id, image[field_id.value])
+
+    warning = _extracted(
+        FieldId.WARNING_TEXT, f"{image['warning_heading']} {image['warning_body']}"
+    )
 
     results = {
         CheckId.BRAND: compare_brand(application.brand, field(FieldId.BRAND)),
@@ -230,6 +275,8 @@ def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
         CheckId.PRODUCER_ADDRESS: compare_producer_address(
             application.producer_address, field(FieldId.PRODUCER_ADDRESS)
         ),
+        CheckId.WARNING_WORDING: compare_warning_wording(warning),
+        CheckId.WARNING_HEADING_CASE: compare_warning_heading_case(warning),
         CheckId.COUNTRY_OF_ORIGIN: compare_country_of_origin(
             application.country_of_origin,
             field(FieldId.COUNTRY_OF_ORIGIN),
@@ -249,11 +296,20 @@ def test_review_of_annotated_label_text_matches_expected_field_outcomes(scenario
     application = application_from_dict(scenario["application"])
     image = STARTERS[scenario["image_files"][0]]["visible_text"]
     fields = tuple(_extracted(f, image[f.value]) for f in FieldId if f.value in image)
+    if "warning_heading" in image and "warning_body" in image:
+        fields += (
+            _extracted(
+                FieldId.WARNING_TEXT,
+                f"{image['warning_heading']} {image['warning_body']}",
+            ),
+        )
 
     response = review_after_extraction(application, (), fields)
 
     got = {r.check_id.value: r.outcome.value for r in response.check_results}
     expected = scenario["expected_outcomes"]
-    comparable = {c for c in got if not c.startswith("warning_")}
+    comparable = {
+        c for c in got if c not in {"warning_heading_bold", "warning_body_not_bold"}
+    }
     assert {c: got[c] for c in comparable} == {c: expected[c] for c in comparable}
     assert not response.all_clear
