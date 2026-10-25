@@ -134,22 +134,24 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         st.error(error.message)
 
     if extraction.fields:
-        st.subheader("Observed label fields")
-        headers = st.columns([1.2, 1, 5])
-        headers[0].markdown("**Field**")
-        headers[1].markdown("**State**")
-        headers[2].markdown("**Observations**")
-        for index, field in enumerate(extraction.fields):
-            field_column, state_column, observation_column = st.columns([1.2, 1, 5])
-            field_column.write(field.field_id.value.replace("_", " "))
-            state_column.write(field.state.value.replace("_", " "))
-            with observation_column:
-                for observation in field.observations:
-                    st.text(f"{observation.raw_text} (image {observation.image_id})")
-                if field.explanation:
-                    st.caption(f"Note: {field.explanation}")
-            if index < len(extraction.fields) - 1:
-                st.divider()
+        with st.expander("Observed label fields", expanded=False):
+            headers = st.columns([1.2, 1, 5])
+            headers[0].markdown("**Field**")
+            headers[1].markdown("**State**")
+            headers[2].markdown("**Observations**")
+            for index, field in enumerate(extraction.fields):
+                field_column, state_column, observation_column = st.columns([1.2, 1, 5])
+                field_column.write(field.field_id.value.replace("_", " "))
+                state_column.write(field.state.value.replace("_", " "))
+                with observation_column:
+                    for observation in field.observations:
+                        st.text(
+                            f"{observation.raw_text} (image {observation.image_id})"
+                        )
+                    if field.explanation:
+                        st.caption(f"Note: {field.explanation}")
+                if index < len(extraction.fields) - 1:
+                    st.divider()
 
     response = review_after_extraction(
         application, extraction.errors, extraction.fields
