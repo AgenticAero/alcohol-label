@@ -152,6 +152,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** Offline `poetry run pytest` (381 passed), `poetry run ruff check .` and `poetry run ruff format --check .`; Streamlit `AppTest` load and style-review render; nine live runs recorded in `docs/evaluation.md`.
 - **Pending checks / limitations:** Live results cover only three clear synthetic images; no ambiguous, photographed or held-out example was run, and the uncertain path was not exercised live. The change has not been deployed or browser-tested, and hosted performance is unmeasured.
 
+### 2026-10-25 — AL-14 reviewer results and next actions
+
+- **Tool / version:** GitHub Copilot (VS Code agent), Claude Sonnet 5.5; Atlassian MCP read-only Jira lookup; integrated browser and a local Streamlit run for the walkthrough; OpenAI Responses API (`gpt-6-luna`).
+- **Purpose:** Analyze AL-14, decompose it into five sub-tasks (AL-141 to AL-145, from a CSV the assistant drafted) and implement the summary model, results display, next actions with Retry, a simpler primary path with a contrast-checked palette, and a walkthrough.
+- **Inputs:** AL-14 acceptance criteria, existing app, review and extraction code, fixtures and the AL-13 results.
+- **Output used:** `presentation.py`, `app.py` changes, `.streamlit/config.toml`, new tests, two blurred or cropped fixtures added by the developer, and documentation updates. A throwaway local proxy that returns HTTP 429 once was used to exercise Retry; it is not in the repository.
+- **Human review / changes:** The developer approved the plan, the Retry button and the pinned light theme, supplied the cropped and blurred images, and committed each sub-task. The developer chose r8 blur after r4 did not make the model uncertain.
+- **Checks performed:** `poetry run pytest` (422 passed), `poetry run ruff check .`, `poetry run ruff format --check .`, Streamlit test-harness renders, computed WCAG contrast ratios, and the browser walkthrough recorded in `docs/evaluation.md`.
+- **Pending checks / limitations:** Single-run walkthrough on the developer's machine; not deployed or smoke-checked; screen-reader behavior untested; five findings listed in `docs/evaluation.md` are not yet fixed, including a style judgement accepted on an unreadable warning.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.

@@ -158,6 +158,16 @@ Warning font weight (AL-13), in `extraction.py`, `comparison.py`, `review.py` an
 - The UI shows the original image with the reason for each style check in `needs_review` (every supplied image when none is linked), labelled as manual review. Reviewing it is not automated compliance.
 - Live evidence (`docs/evaluation.md`): 18 of 18 style outcomes matched the annotations on three clear synthetic fixtures, three runs each. This does not cover ambiguous, photographed or held-out labels.
 
+Reviewer results and next actions (AL-14), in `presentation.py`, `app.py` and `.streamlit/config.toml`. Decisions:
+
+- `presentation.py` has no UI imports so it can be tested: `summarize` counts all five outcomes and names discrepancies and unresolved checks (all-clear still comes from `ReviewResponse.all_clear`); `evidence_actions` turns needs-review checks into instructions from the field's extraction state; `failure_guidance` maps each error code to wording and offers Retry only if an error is retryable; `input_error_actions` and `missing_values_note` say what to fix.
+- Missing expected values are a warning, not an error: Verify still runs and those checks stay not evaluated.
+- Retry sets a session flag read as a Verify click, because Streamlit reruns the script on every click; entries and uploads are kept. Non-retryable errors get no Retry button.
+- Evidence is shown by file name, with the image ID added only when names repeat. Label previews sit with the results.
+- Provider, model, latency and raw observed fields are in a collapsed "Technical details" section.
+- The light theme is pinned in `.streamlit/config.toml` and status colours are in `STATUS_COLORS`; tests require at least 4.5:1 against the theme backgrounds. Streamlit's own alert tints are not covered.
+- Deeper bad-upload, image-quality and orientation handling stays with AL-16.
+
 Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`. Decisions:
 
 - Hand-written `*_to_dict` / `*_from_dict` functions for `ApplicationData`, `ExtractedField`, `CheckResult`, `ProcessingError` and `ReviewResponse`; standard library only, no new dependency. Output is JSON-compatible: enums are their string values, tuples are lists, `raw_text` is kept verbatim, and `Decimal` is a string. Typed values are tagged (`{"decimal": "45.0"}`, `{"measurement": {"value": "750", "unit": "ml"}}`; plain strings stay strings), so `str`, `Decimal` and `Measurement` survive a round trip, including trailing zeros.
