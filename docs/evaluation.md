@@ -50,7 +50,7 @@ These are test intentions, not passing results. One fixture may exercise several
 | EV12 | Missing expected application value | Actionable incomplete input or Not evaluated. |
 | EV13 | Corrupt/oversized image or unsupported format | Useful error; session remains usable. |
 | EV14 | Timeout, blocked endpoint, rate error or invalid response | Controlled processing failure; preserve inputs and provide recovery. |
-| EV15 | Reviewer workflow | Check previews, labels, keyboard navigation, readable statuses and recovery. |
+| EV15 | Reviewer workflow | Check previews, labels, readable statuses and recovery. |
 | EV16 | Fresh setup and evaluator access | Documented installation/run/test steps work; deployed app and repository are accessible as intended. |
 
 ## 4. Methods — planned
