@@ -162,6 +162,23 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Source:** current eCFR text for [27 CFR 16.21](https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-16/section-16.21); comparison normalizes whitespace only and retains the original observation.
 - **Limitations:** tests use synthetic or constructed observations and do not establish live extraction accuracy, hosted behavior, formatting compliance, or physical label placement. No deployed smoke check was run for this branch.
 
+### AL-13 warning font-weight evaluation (2026-10-25)
+
+- **Revision and setup:** branch `al-13-warning-font` at `0514e46`, run from the developer's machine (not the deployed app) with `scripts/al13_style_eval.py` and the production adapter: OpenAI Responses API, model `gpt-6-luna`, prompt `label-extraction-v4`, schema `label-observations-v2`, one image per application, reasoning effort per the local `.env`. Style is requested in the same request as transcription, so there is no extra call.
+- **Input:** the three font-weight fixtures from `tests/fixtures/manifest.json` (`starter-0.4`), three runs each, 9 runs in total. Development data only; no held-out images. The annotations are the developer's pending review, made from the rendered pixels.
+
+| Scenario / image | Annotated heading, body | Observed (3 runs) | Heading check | Body check |
+| --- | --- | --- | --- | --- |
+| S01 `starter-clear.png` | bold, regular | bold, not bold in 3 of 3 | match 3/3 | match 3/3 |
+| S17 `warning-heading-regular.png` | regular, regular | not bold, not bold in 3 of 3 | discrepancy 3/3 | match 3/3 |
+| S18 `warning-all-bold.png` | bold, bold | bold, bold in 3 of 3 | match 3/3 | discrepancy 3/3 |
+
+- **Result:** 18 of 18 style check outcomes equalled the annotated expectation. No processing errors, no `uncertain` judgements and no `needs_review` outcomes occurred, so the uncertain path was not exercised live. There were no false accepts and no false discrepancies on this suite. Each defective style (S17 heading, S18 body) was reported as a discrepancy in 3 of 3 runs.
+- **Latency (client-side extraction request, single image):** 3.66 to 8.63 s; 3 of 9 requests were at or under 5 s and 6 of 9 were over. This is not a hosted measurement and does not establish the five-second target.
+- **Limits:** one provider and model; one rendering style (DejaVu Sans, 22 px, clean synthetic text); both weights are clearly distinct; only three images and three runs each, so run-to-run variation is poorly characterised. Photographed labels, other typefaces, small text, glare, blur and low-contrast headings were not tested, and no ambiguous example was run live. This is not an accuracy claim for real labels. The uncertain, absent-style, conflicting-image and wrong-image paths are covered only by offline tests with constructed inputs.
+- **Automation coverage:** automatic heading and body weight assessment worked on the three clear fixtures within the timebox; the requirement is therefore not recorded as unmet for these inputs. Where the model is uncertain, returns no style or the images disagree, the check is `needs_review` with the original image and a reason shown. That visual-review path is a fallback and is not automated compliance. Physical type size is not assessed.
+- **Offline checks:** `poetry run pytest` (381 passed), `poetry run ruff check .` (passed), `poetry run ruff format --check .` (passed). These validate contracts and rules with mocked provider output, not live accuracy.
+
 ### Run context
 
 | Item | Recorded value |

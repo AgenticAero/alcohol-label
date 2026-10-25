@@ -2,7 +2,7 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-12 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11. Jira AL-12 warning wording and heading-case changes on this branch are not yet deployed. Warning boldness checks remain not evaluated (Jira AL-13). Live extraction accuracy beyond the starter checks and hosted performance remain unevaluated.
+**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-13 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11, so the AL-12 and AL-13 changes on this branch are not yet deployed. Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
 
 **Deployed application:** https://alcohol-label-staging.azurewebsites.net (the first request after idle can take over a minute).
 
@@ -27,7 +27,7 @@ The goal is a working, deployed prototype within three working days, with reprod
 - English-language U.S. distilled-spirit labels, supplied as one or two clear JPEG/PNG images.
 - Comparisons for brand, class/type, alcohol content, net contents, producer/bottler name and address, and country of origin for imports.
 - Separate checks for warning wording, uppercase heading and supported font-weight assessment.
-- Explained results with source evidence, explicit uncertainty and recoverable input/processing errors. Warning wording and uppercase heading are checked independently against 27 CFR 16.21; boldness checks remain unresolved pending visual assessment.
+- Explained results with source evidence, explicit uncertainty and recoverable input/processing errors. Warning wording and uppercase heading are checked independently against 27 CFR 16.21; heading and body font weight are judged visually from the image, and an unclear or missing judgement is shown as needs review with the original image.
 - A deployed URL, focused tests and measured evaluation results.
 
 The proposed performance target is **p95 Verify-to-visible-result at or below five seconds** for the supported single-application profile. This target has not been measured or achieved. Measurement conditions and results will be recorded in [Evaluation](docs/evaluation.md).
@@ -36,7 +36,7 @@ The proposed performance target is **p95 Verify-to-visible-result at or below fi
 
 - Wine/beer-specific rules, advanced correction of glare/blur/perspective and durable processing of 200–300 applications are outside the core commitment.
 - A batch of up to five applications is optional stretch work, only after the core is ready.
-- Warning font-weight automation remains unproven. Unsupported or ambiguous style checks will require explicit visual review; that fallback does not count as automated verification.
+- Warning font-weight automation is validated only on three clear synthetic fixtures. Unclear, missing or disagreeing style judgements require explicit visual review; that fallback does not count as automated verification.
 - Arbitrary images cannot establish physical type size or complete container-wide placement.
 - This is a standalone reviewer aid with a limited set of checks, not a comprehensive regulatory compliance certification or a COLA integration.
 
@@ -79,11 +79,11 @@ Keep credentials outside version control. Document which image data is sent to a
 
 **Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand, class/type, alcohol content, net contents, producer name, producer address, and (for imports) country-of-origin checks are compared and explained with their evidence. Warning wording and heading case are also checked separately; boldness checks remain not evaluated, so a review is not reported as all clear. Extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
-**Sample review:** Sixteen synthetic scenarios (`S01` to `S16`) across ten synthetic labels, with expected application values,
+**Sample review:** Eighteen synthetic scenarios (`S01` to `S18`) across twelve synthetic labels, with expected application values,
 expected outcomes and provenance are in
 [`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): the clear match, case-only brand variation,
-ABV mismatch, changed warning word, and title-case warning heading, plus origin, net-contents,
-proof-only and address cases. They use the ten synthetic PNGs in `tests/fixtures/labels/`.
+ABV mismatch, changed warning word, title-case warning heading, non-bold heading and all-bold warning, plus origin, net-contents,
+proof-only and address cases. They use the twelve synthetic PNGs in `tests/fixtures/labels/`.
 Annotations are pending developer review.
 
 **Regenerating starter images (optional):** The committed PNGs are the
