@@ -796,3 +796,35 @@ def test_style_without_any_warning_text_needs_review(warning):
 
     assert result.outcome is CheckOutcome.NEEDS_REVIEW
     assert "not read in image front" in result.explanation
+
+
+def test_style_is_not_accepted_when_the_warning_text_was_read_unreliably():
+    uncertain = ExtractedField(
+        FieldId.WARNING_TEXT,
+        ExtractionState.UNCERTAIN,
+        (Observation("GOVERNMENT WARNING: (1) According ...", "front"),),
+        "At least one image did not support a reliable reading.",
+    )
+    styles = (_style(heading="bold", body="not_bold"),)
+
+    for compare in (compare_warning_heading_bold, compare_warning_body_not_bold):
+        result = compare(styles, uncertain)
+
+        assert result.outcome is CheckOutcome.NEEDS_REVIEW
+        assert "could not be read reliably" in result.explanation
+        assert "not accepted" in result.explanation
+        assert result.observed_value is None
+        assert [e.image_id for e in result.evidence] == ["front"]
+
+
+def test_conflicting_warning_text_does_not_block_a_clear_style_judgement():
+    conflicting = ExtractedField(
+        FieldId.WARNING_TEXT,
+        ExtractionState.CONFLICTING,
+        (Observation("GOVERNMENT WARNING: one", "front"), Observation("other", "back")),
+        "Images differ.",
+    )
+
+    result = compare_warning_heading_bold((_style("front"),), conflicting)
+
+    assert result.outcome is CheckOutcome.MATCH
