@@ -15,6 +15,7 @@ from alcohol_label.comparison import (
     strip_origin_phrase,
 )
 from alcohol_label.schemas import (
+    CheckId,
     CheckOutcome,
     ExtractedField,
     ExtractionState,
@@ -487,3 +488,115 @@ def test_origin_imported_unresolved_cases():
         compare_country_of_origin("Scotland", conflicting, True).outcome
         is CheckOutcome.NEEDS_REVIEW
     )
+
+
+# One row per field: (check, compare(expected, extracted), expected, matching text, differing text).
+_MATRIX = [
+    (CheckId.BRAND, compare_brand, "Stone's Throw", "STONE'S THROW", "Stone's Throe"),
+    (CheckId.CLASS_TYPE, compare_class_type, "Bourbon", "bourbon", "Rye"),
+    (CheckId.ALCOHOL_CONTENT, compare_alcohol_content, _abv("45"), "45%", "40%"),
+    (CheckId.NET_CONTENTS, compare_net_contents, _volume("750"), "750 mL", "700 mL"),
+    (
+        CheckId.PRODUCER_NAME,
+        compare_producer_name,
+        "Example Distillery",
+        "EXAMPLE DISTILLERY",
+        "Other Distillery",
+    ),
+    (
+        CheckId.PRODUCER_ADDRESS,
+        compare_producer_address,
+        "Louisville, KY",
+        "louisville,  ky",
+        "Bardstown, KY",
+    ),
+    (
+        CheckId.COUNTRY_OF_ORIGIN,
+        lambda expected, extracted: compare_country_of_origin(
+            expected, extracted, True
+        ),
+        "Scotland",
+        "Product of Scotland",
+        "Ireland",
+    ),
+]
+_MATRIX_IDS = [row[0].value for row in _MATRIX]
+
+
+def _matrix_field(check: CheckId, text: str) -> ExtractedField:
+    return _text_field(FieldId(check.value), text)
+
+
+@pytest.mark.parametrize(
+    ("check", "compare", "expected", "match", "_"), _MATRIX, ids=_MATRIX_IDS
+)
+def test_every_field_matches_with_evidence(check, compare, expected, match, _):
+    result = compare(expected, _matrix_field(check, match))
+    assert result.outcome is CheckOutcome.MATCH
+    assert result.check_id is check
+    assert result.expected_value == expected
+    assert result.observed_value == match
+    assert [e.image_id for e in result.evidence] == ["front"]
+
+
+@pytest.mark.parametrize(
+    ("check", "compare", "expected", "_", "differ"), _MATRIX, ids=_MATRIX_IDS
+)
+def test_every_field_reports_a_discrepancy_with_both_values(
+    check, compare, expected, _, differ
+):
+    result = compare(expected, _matrix_field(check, differ))
+    assert result.outcome is CheckOutcome.DISCREPANCY
+    assert result.expected_value == expected
+    assert result.observed_value == differ
+    assert result.evidence
+    assert result.explanation
+
+
+@pytest.mark.parametrize(
+    ("check", "compare", "expected", "match", "_"), _MATRIX, ids=_MATRIX_IDS
+)
+def test_every_field_without_an_expected_value_is_not_evaluated(
+    check, compare, expected, match, _
+):
+    result = compare(None, _matrix_field(check, match))
+    assert result.outcome is CheckOutcome.NOT_EVALUATED
+    assert "not supplied" in result.explanation
+
+
+@pytest.mark.parametrize(
+    ("check", "compare", "expected", "match", "differ"), _MATRIX, ids=_MATRIX_IDS
+)
+@pytest.mark.parametrize("state", ["absent", "missing", "uncertain", "conflicting"])
+def test_every_field_with_unresolved_extraction_needs_review(
+    check, compare, expected, match, differ, state
+):
+    field_id = FieldId(check.value)
+    extracted = {
+        "absent": None,
+        "missing": ExtractedField(field_id, ExtractionState.MISSING, (), "Not found."),
+        "uncertain": ExtractedField(
+            field_id,
+            ExtractionState.UNCERTAIN,
+            (Observation(match, "front"),),
+            "Blurred.",
+        ),
+        "conflicting": ExtractedField(
+            field_id,
+            ExtractionState.CONFLICTING,
+            (Observation(match, "front"), Observation(differ, "back")),
+            "Images differ.",
+        ),
+    }[state]
+
+    result = compare(expected, extracted)
+
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert result.explanation
+    expected_images = {
+        "absent": [],
+        "missing": [],
+        "uncertain": ["front"],
+        "conflicting": ["front", "back"],
+    }[state]
+    assert [e.image_id for e in result.evidence] == expected_images

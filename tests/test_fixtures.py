@@ -240,3 +240,20 @@ def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
     assert {c.value: r.outcome.value for c, r in results.items()} == {
         c.value: expected[c.value] for c in results
     }
+
+
+@pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
+def test_review_of_annotated_label_text_matches_expected_field_outcomes(scenario):
+    from alcohol_label.review import review_after_extraction
+
+    application = application_from_dict(scenario["application"])
+    image = STARTERS[scenario["image_files"][0]]["visible_text"]
+    fields = tuple(_extracted(f, image[f.value]) for f in FieldId if f.value in image)
+
+    response = review_after_extraction(application, (), fields)
+
+    got = {r.check_id.value: r.outcome.value for r in response.check_results}
+    expected = scenario["expected_outcomes"]
+    comparable = {c for c in got if not c.startswith("warning_")}
+    assert {c: got[c] for c in comparable} == {c: expected[c] for c in comparable}
+    assert not response.all_clear
