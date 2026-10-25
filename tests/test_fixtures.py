@@ -208,6 +208,71 @@ def test_annotations_agree_with_the_applications_and_the_warning_change():
     assert STARTERS["labels/starter-clear.png"]["provenance"]["defect"] is None
 
 
+@pytest.mark.parametrize(
+    ("scenario_id", "image_file", "heading_style", "body_style", "heading", "body"),
+    [
+        (
+            "S01-clear-match",
+            "labels/starter-clear.png",
+            "bold, uppercase",
+            "regular weight",
+            "match",
+            "match",
+        ),
+        (
+            "S17-warning-heading-not-bold",
+            "labels/warning-heading-regular.png",
+            "regular weight, uppercase",
+            "regular weight",
+            "discrepancy",
+            "match",
+        ),
+        (
+            "S18-warning-all-bold",
+            "labels/warning-all-bold.png",
+            "bold, uppercase",
+            "bold",
+            "match",
+            "discrepancy",
+        ),
+    ],
+)
+def test_font_weight_fixtures_pair_annotated_style_with_expected_outcomes(
+    scenario_id, image_file, heading_style, body_style, heading, body
+):
+    scenario = SCENARIOS[scenario_id]
+    entry = STARTERS[image_file]
+
+    assert scenario["image_files"] == [image_file]
+    assert entry["visible_style"] == {
+        "warning_heading": heading_style,
+        "warning_body": body_style,
+    }
+    outcomes = scenario["expected_outcomes"]
+    assert outcomes["warning_heading_bold"] == heading
+    assert outcomes["warning_body_not_bold"] == body
+    assert outcomes["warning_wording"] == "match"
+    assert outcomes["warning_heading_case"] == "match"
+
+
+def test_font_weight_fixtures_differ_from_clear_only_in_warning_weight():
+    clear = STARTERS["labels/starter-clear.png"]
+    baseline = _application("S01-clear-match")
+
+    for scenario_id, image_file in (
+        ("S17-warning-heading-not-bold", "labels/warning-heading-regular.png"),
+        ("S18-warning-all-bold", "labels/warning-all-bold.png"),
+    ):
+        entry = STARTERS[image_file]
+        assert entry["visible_text"] == clear["visible_text"]
+        assert entry["provenance"]["defect"]
+        assert SCENARIOS[scenario_id]["deliberate_defect"]
+        assert _differences(baseline, _application(scenario_id)) == {
+            "application_id",
+            "images",
+        }
+
+
 def _extracted(field_id: FieldId, text: str | None) -> ExtractedField:
     if text is None:
         return ExtractedField(
