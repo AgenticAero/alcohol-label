@@ -15,7 +15,9 @@ from alcohol_label.schemas import (
     Observation,
     ProcessingError,
     ProcessingStage,
+    StyleJudgement,
     Unit,
+    WarningStyleObservation,
 )
 
 
@@ -138,22 +140,68 @@ WARNING_CHECKS = (
 )
 
 
-def test_review_runs_field_and_warning_text_checks_but_leaves_style_unevaluated():
+def _style(heading="bold", body="not_bold", reason=None, image="front"):
+    return WarningStyleObservation(
+        image, StyleJudgement(heading), StyleJudgement(body), reason
+    )
+
+
+def test_review_without_style_leaves_style_checks_needs_review_not_a_pass():
     response = review_after_extraction(_application(), (), _fields())
     results = _results(response)
 
     for check in CheckId:
         if check in {CheckId.WARNING_HEADING_BOLD, CheckId.WARNING_BODY_NOT_BOLD}:
-            assert results[check].outcome is CheckOutcome.NOT_EVALUATED
-        elif check in {CheckId.WARNING_WORDING, CheckId.WARNING_HEADING_CASE}:
-            assert results[check].outcome is CheckOutcome.MATCH
-            assert results[check].evidence[0].image_id == "front"
+            assert results[check].outcome is CheckOutcome.NEEDS_REVIEW
         elif check is CheckId.COUNTRY_OF_ORIGIN:
             assert results[check].outcome is CheckOutcome.NOT_APPLICABLE
         else:
             assert results[check].outcome is CheckOutcome.MATCH, check
             assert results[check].evidence[0].image_id == "front"
     assert not response.all_clear
+
+
+def test_review_is_all_clear_only_when_every_check_including_style_is_clear():
+    response = review_after_extraction(_application(), (), _fields(), (_style(),))
+
+    assert response.all_clear
+    results = _results(response)
+    assert results[CheckId.WARNING_HEADING_BOLD].outcome is CheckOutcome.MATCH
+    assert results[CheckId.WARNING_BODY_NOT_BOLD].outcome is CheckOutcome.MATCH
+
+
+@pytest.mark.parametrize(
+    ("style", "heading", "body"),
+    [
+        (_style("not_bold", "not_bold"), CheckOutcome.DISCREPANCY, CheckOutcome.MATCH),
+        (_style("bold", "bold"), CheckOutcome.MATCH, CheckOutcome.DISCREPANCY),
+        (
+            _style("uncertain", "bold", "Blurred."),
+            CheckOutcome.NEEDS_REVIEW,
+            CheckOutcome.DISCREPANCY,
+        ),
+    ],
+)
+def test_style_outcomes_are_reported_per_check_and_block_all_clear(
+    style, heading, body
+):
+    response = review_after_extraction(_application(), (), _fields(), (style,))
+    results = _results(response)
+
+    assert results[CheckId.WARNING_HEADING_BOLD].outcome is heading
+    assert results[CheckId.WARNING_BODY_NOT_BOLD].outcome is body
+    assert not response.all_clear
+
+
+def test_processing_error_still_prevents_style_comparison():
+    error = ProcessingError(
+        ProcessingStage.EXTRACTION, ErrorCode.PROVIDER_TIMEOUT, "Timed out.", True
+    )
+    response = review_after_extraction(_application(), (error,), _fields(), (_style(),))
+    results = _results(response)
+
+    for check in (CheckId.WARNING_HEADING_BOLD, CheckId.WARNING_BODY_NOT_BOLD):
+        assert results[check].outcome is CheckOutcome.NOT_EVALUATED
 
 
 def test_warning_conflict_across_images_needs_review_with_both_evidence_sources():

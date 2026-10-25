@@ -10,6 +10,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_body_not_bold,
+    compare_warning_heading_bold,
     compare_warning_heading_case,
     compare_warning_wording,
     parse_percentages,
@@ -24,7 +26,9 @@ from alcohol_label.schemas import (
     FieldId,
     Measurement,
     Observation,
+    StyleJudgement,
     Unit,
+    WarningStyleObservation,
 )
 
 
@@ -668,3 +672,127 @@ def test_every_field_with_unresolved_extraction_needs_review(
         "conflicting": ["front", "back"],
     }[state]
     assert [e.image_id for e in result.evidence] == expected_images
+
+
+def _style(image="front", heading="bold", body="not_bold", reason=None):
+    return WarningStyleObservation(
+        image, StyleJudgement(heading), StyleJudgement(body), reason
+    )
+
+
+def _warning_on(*images: str) -> ExtractedField:
+    return ExtractedField(
+        FieldId.WARNING_TEXT,
+        ExtractionState.OBSERVED,
+        tuple(Observation(_CANONICAL_WARNING, image) for image in images),
+    )
+
+
+@pytest.mark.parametrize(
+    ("heading", "body", "heading_outcome", "body_outcome"),
+    [
+        ("bold", "not_bold", CheckOutcome.MATCH, CheckOutcome.MATCH),
+        ("not_bold", "not_bold", CheckOutcome.DISCREPANCY, CheckOutcome.MATCH),
+        ("bold", "bold", CheckOutcome.MATCH, CheckOutcome.DISCREPANCY),
+    ],
+)
+def test_style_checks_judge_heading_and_body_separately(
+    heading, body, heading_outcome, body_outcome
+):
+    styles = (_style(heading=heading, body=body),)
+    warning = _warning_on("front")
+
+    head = compare_warning_heading_bold(styles, warning)
+    text = compare_warning_body_not_bold(styles, warning)
+
+    assert (head.outcome, text.outcome) == (heading_outcome, body_outcome)
+    for result in (head, text):
+        assert result.evidence[0].image_id == "front"
+        assert result.evidence[0].field_id is FieldId.WARNING_TEXT
+        assert "type size is not assessed" in result.explanation
+    assert head.expected_value == "bold"
+    assert text.expected_value == "not bold"
+
+
+def test_style_discrepancy_names_expected_and_observed_weight():
+    result = compare_warning_heading_bold(
+        (_style(heading="not_bold"),), _warning_on("front")
+    )
+
+    assert result.observed_value == "not bold"
+    assert "heading appears not bold" in result.explanation
+
+
+def test_absent_style_needs_review_with_its_own_reason():
+    for compare in (compare_warning_heading_bold, compare_warning_body_not_bold):
+        result = compare((), _warning_on("front"))
+        assert result.outcome is CheckOutcome.NEEDS_REVIEW
+        assert "assessment is available" in result.explanation
+        assert result.observed_value is None
+
+
+def test_uncertain_style_needs_review_with_provider_reason_and_image_evidence():
+    styles = (_style(heading="uncertain", reason="Heading is blurred."),)
+    warning = _warning_on("front")
+
+    heading = compare_warning_heading_bold(styles, warning)
+    body = compare_warning_body_not_bold(styles, warning)
+
+    assert heading.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "uncertain" in heading.explanation
+    assert "Heading is blurred." in heading.explanation
+    assert heading.evidence[0].image_id == "front"
+    assert "assessment is available" not in heading.explanation
+    assert body.outcome is CheckOutcome.MATCH
+
+
+def test_images_that_disagree_need_review_and_keep_both_evidence_refs():
+    styles = (_style("front", heading="bold"), _style("back", heading="not_bold"))
+
+    result = compare_warning_heading_bold(styles, _warning_on("front", "back"))
+
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "disagree" in result.explanation
+    assert [(e.observation_index, e.image_id) for e in result.evidence] == [
+        (0, "front"),
+        (1, "back"),
+    ]
+
+
+def test_agreeing_images_match_and_keep_both_evidence_refs():
+    styles = (_style("front"), _style("back"))
+
+    result = compare_warning_heading_bold(styles, _warning_on("front", "back"))
+
+    assert result.outcome is CheckOutcome.MATCH
+    assert len(result.evidence) == 2
+
+
+def test_style_from_an_image_without_the_warning_text_does_not_count():
+    styles = (_style("front"), _style("back", heading="not_bold"))
+
+    result = compare_warning_heading_bold(styles, _warning_on("front"))
+
+    assert result.outcome is CheckOutcome.MATCH
+    assert [e.image_id for e in result.evidence] == ["front"]
+
+    elsewhere = compare_warning_heading_bold((_style("back"),), _warning_on("front"))
+    assert elsewhere.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "not read in image back" in elsewhere.explanation
+    assert not elsewhere.evidence
+
+
+@pytest.mark.parametrize(
+    "warning",
+    [
+        None,
+        ExtractedField(
+            FieldId.WARNING_TEXT, ExtractionState.MISSING, (), "No warning found."
+        ),
+    ],
+)
+def test_style_without_any_warning_text_needs_review(warning):
+    result = compare_warning_body_not_bold((_style(),), warning)
+
+    assert result.outcome is CheckOutcome.NEEDS_REVIEW
+    assert "not read in image front" in result.explanation

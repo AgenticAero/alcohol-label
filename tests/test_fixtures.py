@@ -15,6 +15,8 @@ from alcohol_label.comparison import (
     compare_net_contents,
     compare_producer_address,
     compare_producer_name,
+    compare_warning_body_not_bold,
+    compare_warning_heading_bold,
     compare_warning_heading_case,
     compare_warning_wording,
 )
@@ -26,6 +28,8 @@ from alcohol_label.schemas import (
     ExtractionState,
     FieldId,
     Observation,
+    StyleJudgement,
+    WarningStyleObservation,
     application_from_dict,
     application_to_dict,
 )
@@ -378,3 +382,35 @@ def test_review_of_annotated_label_text_matches_expected_field_outcomes(scenario
     }
     assert {c: got[c] for c in comparable} == {c: expected[c] for c in comparable}
     assert not response.all_clear
+
+
+@pytest.mark.parametrize(
+    "scenario_id",
+    ["S01-clear-match", "S17-warning-heading-not-bold", "S18-warning-all-bold"],
+)
+def test_style_comparators_reproduce_annotated_font_weight_outcomes(scenario_id):
+    """Offline: annotated pixels fed through the comparators, not live extraction."""
+    scenario = SCENARIOS[scenario_id]
+    entry = STARTERS[scenario["image_files"][0]]
+
+    def judged(text: str) -> StyleJudgement:
+        return (
+            StyleJudgement.BOLD if text.startswith("bold") else StyleJudgement.NOT_BOLD
+        )
+
+    style = WarningStyleObservation(
+        "front",
+        judged(entry["visible_style"]["warning_heading"]),
+        judged(entry["visible_style"]["warning_body"]),
+    )
+    text = entry["visible_text"]
+    warning = _extracted(
+        FieldId.WARNING_TEXT, f"{text['warning_heading']} {text['warning_body']}"
+    )
+
+    heading = compare_warning_heading_bold((style,), warning)
+    body = compare_warning_body_not_bold((style,), warning)
+
+    expected = scenario["expected_outcomes"]
+    assert heading.outcome.value == expected["warning_heading_bold"]
+    assert body.outcome.value == expected["warning_body_not_bold"]

@@ -154,7 +154,7 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
                     st.divider()
 
     response = review_after_extraction(
-        application, extraction.errors, extraction.fields
+        application, extraction.errors, extraction.fields, extraction.warning_styles
     )
     results = response.check_results
     counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
