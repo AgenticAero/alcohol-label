@@ -157,16 +157,17 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
     results = response.check_results
     counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
     if response.all_clear:
-        st.success("All supported checks passed.")
+        st.success("# :green[✔] Pass\n\nAll supported checks passed.")
     else:
         extraction_status = (
             " Extraction encountered processing failures." if extraction.errors else ""
         )
         st.warning(
+            "# :red[✖] Not a pass\n\n"
             f"{counts[CheckOutcome.DISCREPANCY]} discrepancy, "
             f"{counts[CheckOutcome.NEEDS_REVIEW]} need review, "
             f"{counts[CheckOutcome.NOT_EVALUATED]} not evaluated of "
-            f"{len(results)} checks.{extraction_status} This is not a pass."
+            f"{len(results)} checks.{extraction_status}"
         )
     table = pd.DataFrame(
         {
