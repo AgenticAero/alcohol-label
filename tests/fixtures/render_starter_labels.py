@@ -12,13 +12,15 @@ directory is /usr/share/fonts/truetype/dejavu. For another installation, use:
 
 Using the committed PNG fixtures does not require these fonts.
 
-Both labels are fictional. They are identical except for one deliberately
-changed word in the government warning. The committed PNGs are the source of
-truth: output depends on the installed DejaVu fonts, so re-rendering on another
+All labels are fictional. The two starter labels are identical except for one
+deliberately changed word in the government warning; the others vary one printed
+statement (origin, net contents, alcohol, producer lines) for comparison rules.
+The committed PNGs are the source of truth: output depends on the installed DejaVu fonts, so re-rendering on another
 machine may differ slightly. Check hashes in manifest.json after re-rendering.
 """
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -99,36 +101,91 @@ def _warning(draw, body: str, top: int, font_dir: Path) -> None:
         x += width + space
 
 
-def render(warning_body: str, font_dir: Path) -> Image.Image:
+@dataclass(frozen=True)
+class LabelSpec:
+    """Printed statements for one synthetic label; the warning is always bold-headed."""
+
+    filename: str
+    brand: str = "OLD TOM"
+    class_type: str = "Straight Bourbon Whiskey"
+    alcohol: str | None = "45% Alc./Vol. (90 Proof)"
+    net_contents: str = "750 mL"
+    producer_lines: tuple[str, ...] = (
+        "Distilled and bottled by Example Distillery",
+        "Louisville, KY",
+    )
+    origin: str | None = None
+    warning_body: str = WARNING_BODY
+
+
+SPECS = (
+    LabelSpec("starter-clear.png"),
+    LabelSpec("starter-warning-changed.png", warning_body=CHANGED_WARNING_BODY),
+    LabelSpec(
+        "import-product-of.png",
+        brand="HIGHLAND REEL",
+        class_type="Single Malt Scotch Whisky",
+        alcohol="43% Alc./Vol. (86 Proof)",
+        net_contents="700 mL",
+        producer_lines=("Imported by Example Imports", "New York, NY"),
+        origin="Product of Scotland",
+    ),
+    LabelSpec(
+        "import-no-origin.png",
+        brand="HIGHLAND REEL",
+        class_type="Single Malt Scotch Whisky",
+        alcohol="43% Alc./Vol. (86 Proof)",
+        net_contents="700 mL",
+        producer_lines=("Imported by Example Imports", "New York, NY"),
+    ),
+    LabelSpec("net-metric-and-floz.png", net_contents="750 mL / 25.4 FL. OZ."),
+    LabelSpec("net-floz-only.png", net_contents="25.4 FL. OZ."),
+    LabelSpec("abv-proof-only.png", alcohol="90 Proof"),
+    LabelSpec(
+        "producer-street.png",
+        producer_lines=("Bottled by Example Distillery", "123 Main St, Louisville, KY"),
+    ),
+    LabelSpec(
+        "producer-new-louisville.png",
+        producer_lines=("Bottled by Example Distillery", "New Louisville, KY"),
+    ),
+)
+
+
+def render(spec: LabelSpec, font_dir: Path) -> Image.Image:
     image = Image.new("RGB", SIZE, PAPER)
     draw = ImageDraw.Draw(image)
     draw.rectangle((30, 30, SIZE[0] - 30, SIZE[1] - 30), outline=ACCENT, width=6)
 
-    _centered(draw, 90, "OLD TOM", _font(font_dir, "DejaVuSerif-Bold.ttf", 120), ACCENT)
+    size = 120
+    while (
+        draw.textlength(spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size))
+        > 1000
+    ):
+        size -= 4
     _centered(
-        draw,
-        250,
-        "Straight Bourbon Whiskey",
-        _font(font_dir, "DejaVuSerif-Bold.ttf", 46),
+        draw, 90, spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size), ACCENT
     )
-    _centered(
-        draw, 340, "45% Alc./Vol. (90 Proof)", _font(font_dir, "DejaVuSerif.ttf", 40)
-    )
-    _centered(draw, 410, "750 mL", _font(font_dir, "DejaVuSerif.ttf", 40))
+    _centered(draw, 250, spec.class_type, _font(font_dir, "DejaVuSerif-Bold.ttf", 46))
+    medium = _font(font_dir, "DejaVuSerif.ttf", 40)
+    if spec.alcohol:
+        _centered(draw, 340, spec.alcohol, medium)
+    _centered(draw, 410, spec.net_contents, medium)
     small = _font(font_dir, "DejaVuSerif.ttf", 30)
-    _centered(draw, 500, "Distilled and bottled by Example Distillery", small)
-    _centered(draw, 545, "Louisville, KY", small)
-    _warning(draw, warning_body, top=650, font_dir=font_dir)
+    lines = (*spec.producer_lines, *((spec.origin,) if spec.origin else ()))
+    for index, line in enumerate(lines):
+        _centered(draw, 500 + 45 * index, line, small)
+    _warning(
+        draw, spec.warning_body, top=650 if len(lines) <= 3 else 700, font_dir=font_dir
+    )
     return image
 
 
 def main() -> None:
     args = parse_args()
     OUT_DIR.mkdir(exist_ok=True)
-    render(WARNING_BODY, args.font_dir).save(OUT_DIR / "starter-clear.png")
-    render(CHANGED_WARNING_BODY, args.font_dir).save(
-        OUT_DIR / "starter-warning-changed.png"
-    )
+    for spec in SPECS:
+        render(spec, args.font_dir).save(OUT_DIR / spec.filename)
 
 
 if __name__ == "__main__":

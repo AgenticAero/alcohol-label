@@ -77,15 +77,13 @@ Keep credentials outside version control. Document which image data is sent to a
 
     poetry run streamlit run src/alcohol_label/app.py
 
-**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand check is compared and explained; all other checks remain not evaluated until their comparison is implemented; extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand, class/type, alcohol content, net contents, producer name, producer address and (for imports) country-of-origin checks are compared and explained with their evidence; the four warning checks remain not evaluated until implemented, so a review is never reported as all clear yet. Extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
-**Sample review:** Four starter scenarios with expected application values,
+**Sample review:** Fifteen synthetic scenarios (`S01` to `S15`) with expected application values,
 expected outcomes and provenance are in
-[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json):
-a clear match (`S01`), a case-only brand variation (`S02`),
-an ABV mismatch (`S03`) and a changed warning word (`S04`).
-They use `tests/fixtures/labels/starter-clear.png` and
-`tests/fixtures/labels/starter-warning-changed.png`.
+[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): the four starters (a clear match,
+a case-only brand variation, an ABV mismatch and a changed warning word) plus origin, net-contents,
+proof-only and address cases. They use the nine synthetic PNGs in `tests/fixtures/labels/`.
 Annotations are pending developer review.
 
 **Regenerating starter images (optional):** The committed PNGs are the
@@ -113,7 +111,7 @@ differences before committing.
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | `poetry run pytest` | 126 passed (offline; includes AL-8 parsing, aggregation and error cases) |
+| Unit and adapter tests | `poetry run pytest` | 317 passed on 2026-10-24 (offline; extraction parsing and errors, every comparison policy, review wiring, fixture manifest) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
 | Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
 | Live extraction evaluation | `poetry run python -c '...'` | Single-image and two-image adapter smoke calls succeeded; one two-image run took 14.09 s, so the five-second target is not demonstrated |
@@ -126,7 +124,7 @@ Keep tests that require live credentials separate from offline rule/parsing test
 | Item | Value |
 | --- | --- |
 | Application URL | https://alcohol-label-staging.azurewebsites.net |
-| Evaluator access instructions | Open the URL in any browser; no login. Enter the expected values, upload one or two JPEG/PNG label images, and select **Verify**. Only the brand comparison is implemented; other checks show as not evaluated (Day 2 scope). |
+| Evaluator access instructions | Open the URL in any browser; no login. Enter the expected values, upload one or two JPEG/PNG label images, and select **Verify**. The seven field comparisons (brand, class/type, alcohol content, net contents, producer name and address, and country of origin for imports) run from the AL-11 change onward; check the deployed commit below. Warning checks show as not evaluated (not yet implemented). |
 | Deployed commit/release | `e4c8acb` on `main` (merge of PR #13, 2026-10-24) |
 | Fresh-session access check | Passed 2026-10-24 by the developer in a fresh browser session: brand match, brand discrepancy and the implemented-checks notice all worked. OpenAI Responses API request latency was over 5 s on the first run and 3.98 s on the second; this is not a performance evaluation. |
 
