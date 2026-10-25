@@ -225,6 +225,36 @@
       }
     },
     {
+      "image_id": "starter-clear-blur-r8",
+      "file": "labels/starter-clear-blur-r8.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 195927,
+      "sha256": "e10b1714dbce4cc7ada634b639e9c42fb06017db5aef8f4fc3ebdec06fc6e199",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "starter-clear.png (tests/fixtures/render_starter_labels.py) blurred whole-image; radius 8 per the file name, blur tool not recorded; not reproducible by the renderer",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The whole image is heavily blurred; brand and class/type remain readable, but the government warning and most small text cannot be read. Underlying content matches starter-clear."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING: (illegible; letters cannot be read reliably)",
+        "warning_body": "(illegible; blurred beyond reliable reading)"
+      },
+      "visible_style": {
+        "warning_heading": "cannot be determined reliably (heavily blurred; looks heavier than the body)",
+        "warning_body": "cannot be determined reliably (heavily blurred)"
+      }
+    },
+    {
       "image_id": "import-product-of",
       "file": "labels/import-product-of.png",
       "format": "PNG",
