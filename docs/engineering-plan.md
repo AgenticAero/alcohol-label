@@ -168,6 +168,15 @@ Reviewer results and next actions (AL-14), in `presentation.py`, `app.py` and `.
 - The light theme is pinned in `.streamlit/config.toml` and status colours are in `STATUS_COLORS`; tests require at least 4.5:1 against the theme backgrounds. Streamlit's own alert tints are not covered.
 - Deeper bad-upload, image-quality and orientation handling stays with AL-16.
 
+Regression fixtures and checks (AL-15), in `tests/support.py`, `tests/test_regression.py` and `tests/test_fixtures.py`. Decisions:
+
+- The manifest is the single source of truth: each scenario has an application, image files, an optional `provider_failure`, a `split` and annotated `expected_outcomes`. Images carry `visible_text`, `visible_style` and, where a reading cannot be established, `illegible_fields`; a null text value means not printed.
+- `tests/support.py` turns an annotated image into the provider JSON a faithful model would return. The regression suite injects it at the `_call_provider` boundary, so parsing, aggregation and review are the real code.
+- Processing failures are scenarios: a `provider_failure` names the image and kind (timeout, rate limited, endpoint blocked, invalid response) and the expected error code; the expected result is an error plus all checks not evaluated, never a finding.
+- Held-out scenarios (`split: held_out`) are excluded from the development regression, the per-field annotation tests and every script; a test fails if code names them. Reclassification is recorded in `held_out_policy.reclassifications`.
+- The suite is offline by construction (sockets, `urlopen` and credential lookup fail). It cannot show live accuracy, and a wrong annotation would pass.
+- A CI job for pull requests (AL-154) is deferred to the backlog.
+
 Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`. Decisions:
 
 - Hand-written `*_to_dict` / `*_from_dict` functions for `ApplicationData`, `ExtractedField`, `CheckResult`, `ProcessingError` and `ReviewResponse`; standard library only, no new dependency. Output is JSON-compatible: enums are their string values, tuples are lists, `raw_text` is kept verbatim, and `Decimal` is a string. Typed values are tagged (`{"decimal": "45.0"}`, `{"measurement": {"value": "750", "unit": "ml"}}`; plain strings stay strings), so `str`, `Decimal` and `Measurement` survive a round trip, including trailing zeros.

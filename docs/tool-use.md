@@ -162,6 +162,16 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Checks performed:** `poetry run pytest` (422 passed), `poetry run ruff check .`, `poetry run ruff format --check .`, Streamlit test-harness renders, computed WCAG contrast ratios, and the browser walkthrough recorded in `docs/evaluation.md`.
 - **Pending checks / limitations:** Single-run walkthrough on the developer's machine; not deployed or smoke-checked; screen-reader behavior untested; five findings listed in `docs/evaluation.md` are not yet fixed, including a style judgement accepted on an unreadable warning.
 
+### 2026-10-25 — AL-15 regression fixtures and automated checks
+
+- **Tool / version:** GitHub Copilot (VS Code agent), Claude Sonnet 5.5; Atlassian MCP read-only Jira lookup.
+- **Purpose:** Analyze AL-15, decompose it into five sub-tasks (AL-151 to AL-155, from a CSV the assistant drafted), and implement scenario coverage, an offline end-to-end regression suite, held-out layouts and the documentation. AL-154 (CI) was moved to the backlog by the developer.
+- **Inputs:** AL-15 acceptance criteria, the existing manifest, fixtures, extraction, review and test code, and the AL-13/AL-14 evaluation notes.
+- **Output used:** new renders (front/back pair, two held-out layouts), scenarios S19 to S30, `tests/support.py`, `tests/test_regression.py`, the fixture coverage and held-out tests, and documentation updates. A throwaway script first checked all scenarios end to end before it became the test suite.
+- **Human review / changes:** The developer approved the plan, provided the blurred and cropped images, chose to skip the CI sub-task, and questioned the purpose of held-out images, which led to a plain-language explanation. The assistant viewed every new image to annotate it; developer review of those annotations is pending.
+- **Checks performed:** `poetry run pytest` (495 passed), `poetry run ruff check .`, `poetry run ruff format --check .`, and a planted-leak check proving the held-out exclusion test can fail.
+- **Pending checks / limitations:** The suite is offline and annotation-driven, so it cannot show live accuracy, and wrong annotations would pass. Held-out examples are two clean synthetic labels. No CI run exists for this branch.
+
 ## Entry template
 
 Copy this section for a meaningful use of AI or another tool. Remove unused fields.
