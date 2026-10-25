@@ -137,10 +137,10 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Tool / version:** GitHub Copilot (VS Code agent); exact model/version not recorded. Atlassian MCP read-only Jira issue lookup; eCFR webpage retrieval.
 - **Purpose:** Analyze AL-12 and implement strict warning wording and uppercase-heading checks while keeping visual weight checks separate for AL-13.
 - **Inputs:** AL-12 acceptance criteria, engineering plan, existing extraction/review contracts and synthetic fixture annotations; current eCFR §16.21.
-- **Output used:** Warning comparators, review dispatch, focused tests, UI scope notice and updates to engineering, evaluation and README documentation.
+- **Output used:** Warning comparators, review dispatch, the title-case synthetic label and `S16-warning-heading-title-case`, fixture tests, UI scope notice and updates to engineering, evaluation and README documentation.
 - **Human review / changes:** Confirmed the Jira site is read-only. AL-12 has no subtasks; its two text checks form one implementation slice, so no subtask decomposition was proposed. Visual weight remains AL-13.
-- **Checks performed:** Focused comparison/review tests (146 passed), fixture tests (67 passed), and final `poetry run pytest -q` (326 passed); `poetry run ruff check .` and `poetry run ruff format --check .` passed; Streamlit `AppTest` rendered with no exceptions; `git diff --check` passed.
-- **Pending checks / limitations:** Live extraction accuracy and deployed smoke check remain pending; this branch has not been deployed. Synthetic annotations still require developer review. Visual boldness checks remain AL-13 scope.
+- **Checks performed:** Focused comparison/review tests (146 passed); fixture suite (72 passed); `poetry run pytest -q` (331 passed); `poetry run ruff check .` and `poetry run ruff format --check .` passed. Re-ran `poetry run python tests/fixtures/render_starter_labels.py`; manifest image hashes verified by fixture tests, and the title-case PNG was visually inspected. Existing starter PNG hashes were unchanged.
+- **Pending checks / limitations:** Developer review of the new pixel annotations, live extraction accuracy and deployed smoke check remain pending. This branch has not been deployed. Visual boldness checks remain AL-13 scope.
 
 ## Entry template
 

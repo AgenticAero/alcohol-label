@@ -79,11 +79,11 @@ Keep credentials outside version control. Document which image data is sent to a
 
 **Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand, class/type, alcohol content, net contents, producer name, producer address, and (for imports) country-of-origin checks are compared and explained with their evidence. Warning wording and heading case are also checked separately; boldness checks remain not evaluated, so a review is not reported as all clear. Extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
 
-**Sample review:** Fifteen synthetic scenarios (`S01` to `S15`) with expected application values,
+**Sample review:** Sixteen synthetic scenarios (`S01` to `S16`) across ten synthetic labels, with expected application values,
 expected outcomes and provenance are in
-[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): the four starters (a clear match,
-a case-only brand variation, an ABV mismatch and a changed warning word) plus origin, net-contents,
-proof-only and address cases. They use the nine synthetic PNGs in `tests/fixtures/labels/`.
+[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json): the clear match, case-only brand variation,
+ABV mismatch, changed warning word, and title-case warning heading, plus origin, net-contents,
+proof-only and address cases. They use the ten synthetic PNGs in `tests/fixtures/labels/`.
 Annotations are pending developer review.
 
 **Regenerating starter images (optional):** The committed PNGs are the
@@ -111,7 +111,7 @@ differences before committing.
 
 | Check | Verified command | Current evidence |
 | --- | --- | --- |
-| Unit and adapter tests | `poetry run pytest` | 326 passed on 2026-10-24 (offline; extraction parsing and errors, comparison policies, review wiring, warning fixtures) |
+| Unit and adapter tests | `poetry run pytest` | 331 passed on 2026-10-24 (offline; extraction parsing and errors, comparison policies, review wiring, warning fixtures) |
 | Formatting/linting | `poetry run ruff check .` and `poetry run ruff format --check .` | Both pass |
 | Intake form, manual browser check (AL-44) | `poetry run streamlit run src/alcohol_label/app.py` | Passed 2026-10-23 locally: valid single image, two images, missing values, imported product without country, Clear form |
 | Live extraction evaluation | `poetry run python -c '...'` | Single-image and two-image adapter smoke calls succeeded; one two-image run took 14.09 s, so the five-second target is not demonstrated |
