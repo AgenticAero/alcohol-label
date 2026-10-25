@@ -1,6 +1,7 @@
 import hashlib
 import re
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -33,7 +34,7 @@ from alcohol_label.schemas import (
     application_to_dict,
 )
 
-from .support import FIXTURES, REFERENCES, SCENARIOS, STARTERS
+from .support import FIXTURES, MANIFEST, REFERENCES, SCENARIOS, STARTERS
 
 
 def _application(scenario_id: str) -> dict:
@@ -67,7 +68,13 @@ def _is_simple(scenario: dict) -> bool:
     )
 
 
-SIMPLE_SCENARIOS = {sid: s for sid, s in SCENARIOS.items() if _is_simple(s)}
+DEVELOPMENT_SCENARIOS = {
+    sid: s for sid, s in SCENARIOS.items() if s["split"] == "development"
+}
+HELD_OUT_SCENARIOS = {
+    sid: s for sid, s in SCENARIOS.items() if s["split"] == "held_out"
+}
+SIMPLE_SCENARIOS = {sid: s for sid, s in DEVELOPMENT_SCENARIOS.items() if _is_simple(s)}
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
@@ -90,7 +97,7 @@ def test_scenario_images_exist_and_match_application_references(scenario):
     assert uris == files
     assert all(f in STARTERS for f in scenario["image_files"])
     assert all((FIXTURES / f).is_file() for f in scenario["image_files"])
-    assert scenario["split"] == "development"
+    assert scenario["split"] in {"development", "held_out"}
 
 
 def test_every_stored_image_is_listed_once_with_matching_file_facts():
@@ -490,7 +497,7 @@ def test_front_back_scenarios_split_the_statements_across_two_images():
 
 
 def _covers(predicate) -> list[str]:
-    return [sid for sid, s in SCENARIOS.items() if predicate(s)]
+    return [sid for sid, s in DEVELOPMENT_SCENARIOS.items() if predicate(s)]
 
 
 def _discrepant(check: str):
@@ -526,7 +533,7 @@ def test_scenarios_cover_every_regression_category_in_the_acceptance_criteria():
         ),
     }
 
-    assert len(SCENARIOS) >= 10
+    assert len(DEVELOPMENT_SCENARIOS) >= 10
     assert {name: ids for name, ids in categories.items() if not ids} == {}
     assert len(categories["front/back evidence"]) >= 2
 
@@ -548,3 +555,57 @@ def test_provider_failure_scenarios_expect_an_error_and_no_finding():
             "not_applicable",
         }, sid
     assert {s["provider_failure"]["kind"] for s in failing.values()} == kinds
+
+
+def _code_files() -> list[Path]:
+    root = Path(__file__).parents[1]
+    return [
+        *sorted((root / "tests").glob("*.py")),
+        *sorted((root / "scripts").glob("*.py")),
+        *sorted((root / "src").rglob("*.py")),
+    ]
+
+
+def test_held_out_scenarios_are_reserved_with_distinct_layouts():
+    policy = MANIFEST["held_out_policy"]
+    sizes = {(1200, 900)}
+    layouts = set()
+
+    assert len(HELD_OUT_SCENARIOS) >= 2
+    assert policy["reclassifications"] == []
+    assert policy["rule"].strip() and policy["limitation"].strip()
+    for sid, scenario in HELD_OUT_SCENARIOS.items():
+        (image,) = _images_of(scenario)
+        assert image["layout"] not in layouts, sid
+        layouts.add(image["layout"])
+        assert (image["width"], image["height"]) not in sizes, sid
+        sizes.add((image["width"], image["height"]))
+        assert image["provenance"]["type"] == "synthetic", sid
+        assert set(scenario["expected_outcomes"]) == {c.value for c in CheckId}
+
+
+def test_split_values_are_known_and_held_out_images_are_not_shared_with_development():
+    assert {s["split"] for s in SCENARIOS.values()} <= {"development", "held_out"}
+    held_out_files = {f for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]}
+    development_files = {
+        f for s in DEVELOPMENT_SCENARIOS.values() for f in s["image_files"]
+    }
+
+    assert held_out_files and held_out_files.isdisjoint(development_files)
+
+
+def test_no_test_script_or_source_references_a_held_out_scenario_or_image():
+    names = [
+        *HELD_OUT_SCENARIOS,
+        *(f for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]),
+        *(Path(f).name for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]),
+        *(_images_of(s)[0]["image_id"] for s in HELD_OUT_SCENARIOS.values()),
+    ]
+
+    offenders = {
+        path.name: [n for n in names if n in path.read_text()]
+        for path in _code_files()
+        if any(n in path.read_text() for n in names)
+    }
+
+    assert offenders == {}

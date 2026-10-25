@@ -202,6 +202,13 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Not done:** the deployed app was not smoke-checked (the staging deployment is older than this branch), and the non-retryable failure and Visual review needed sections were not exercised in the browser; they are covered by offline tests and Streamlit test-harness runs only.
 - **Offline checks:** `poetry run pytest` (422 passed), `poetry run ruff check .` and `poetry run ruff format --check .` passed.
 
+### Held-out examples reserved for Day 3 (AL-153)
+
+- **What is held out:** `S29-held-out-wide-two-column` (1500x800, left-aligned two-column serif layout, 1 L net contents, clean match) and `S30-held-out-tall-narrow` (800x1200, centered sans layout, imported, regular-weight warning heading). Both are synthetic renders from `tests/fixtures/render_starter_labels.py` with layouts, typefaces, canvas sizes and products that differ from the starter label. Manifest `starter-0.7` marks them `split: held_out`.
+- **How they were chosen:** designed to differ from the development label in layout and typeface, not sampled. Expected outcomes were annotated from the rendered pixels (developer review pending).
+- **Not used for tuning:** the extraction prompt and comparison rules were not run against them, and no test checks their outcomes. Tests exclude them from the development regression and per-field checks, and a test fails if any file under `tests/`, `scripts/` or `src/` names a held-out scenario or image. Any reclassification must be recorded in the manifest's `held_out_policy.reclassifications` (currently empty).
+- **Limitation:** two clean, synthetic examples show feasibility on unseen layouts only. They cannot estimate accuracy, and they include no photographed, rotated, low-contrast or small-print label.
+
 ### Run context
 
 | Item | Recorded value |

@@ -79,9 +79,9 @@ def _font(font_dir: Path, name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(font_dir / name), size)
 
 
-def _centered(draw, y, text, font, fill=INK):
+def _centered(draw, y, text, font, fill=INK, canvas_width=SIZE[0]):
     width = draw.textlength(text, font=font)
-    draw.text(((SIZE[0] - width) / 2, y), text, font=font, fill=fill)
+    draw.text(((canvas_width - width) / 2, y), text, font=font, fill=fill)
 
 
 def _warning(
@@ -92,13 +92,18 @@ def _warning(
     font_dir: Path,
     heading_bold: bool = True,
     body_bold: bool = False,
+    *,
+    family: str = "DejaVuSans",
+    size: int = 22,
+    left: int = 110,
+    right: int = SIZE[0] - 110,
+    line_height: int = 34,
 ) -> None:
     """Wrapped paragraph; the heading and body weights are set independently."""
-    bold = _font(font_dir, "DejaVuSans-Bold.ttf", 22)
-    regular = _font(font_dir, "DejaVuSans.ttf", 22)
+    bold = _font(font_dir, f"{family}-Bold.ttf", size)
+    regular = _font(font_dir, f"{family}.ttf", size)
     words = [(word, bold if heading_bold else regular) for word in heading.split()]
     words += [(word, bold if body_bold else regular) for word in body.split()]
-    left, right, line_height = 110, SIZE[0] - 110, 34
     x, y = left, top
     space = draw.textlength(" ", font=regular)
     for word, font in words:
@@ -210,11 +215,91 @@ def render(spec: LabelSpec, font_dir: Path) -> Image.Image:
     return image
 
 
+def render_wide_two_column(font_dir: Path) -> Image.Image:
+    """Held-out layout: landscape, left-aligned text in two columns, serif warning."""
+    image = Image.new("RGB", (1500, 800), (238, 244, 232))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((30, 30, 1470, 770), outline=(30, 70, 50), width=6)
+    serif_bold = _font(font_dir, "DejaVuSerif-Bold.ttf", 72)
+    draw.text((70, 80), "BLACK HEATH", font=serif_bold, fill=(30, 70, 50))
+    draw.text(
+        (70, 210),
+        "Rye Whiskey",
+        font=_font(font_dir, "DejaVuSerif-Bold.ttf", 44),
+        fill=INK,
+    )
+    medium = _font(font_dir, "DejaVuSerif.ttf", 34)
+    draw.text((70, 300), "50% Alc./Vol. (100 Proof)", font=medium, fill=INK)
+    draw.text((70, 360), "1 L", font=medium, fill=INK)
+    small = _font(font_dir, "DejaVuSerif.ttf", 28)
+    draw.text((780, 90), "Bottled by Heath Spirits Co.", font=small, fill=INK)
+    draw.text((780, 130), "Frankfort, KY", font=small, fill=INK)
+    _warning(
+        draw,
+        WARNING_HEADING,
+        WARNING_BODY,
+        top=250,
+        font_dir=font_dir,
+        family="DejaVuSerif",
+        size=24,
+        left=780,
+        right=1430,
+        line_height=36,
+    )
+    return image
+
+
+def render_tall_narrow(font_dir: Path) -> Image.Image:
+    """Held-out layout: portrait, centered sans text, imported, regular-weight heading."""
+    image = Image.new("RGB", (800, 1200), (232, 236, 246))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((30, 30, 770, 1170), outline=(40, 50, 110), width=6)
+    sans = "DejaVuSans.ttf"
+    _centered(
+        draw,
+        100,
+        "Northgate",
+        _font(font_dir, "DejaVuSans-Bold.ttf", 84),
+        (40, 50, 110),
+        800,
+    )
+    _centered(draw, 230, "Blended Scotch Whisky", _font(font_dir, sans, 36), INK, 800)
+    for y, text in (
+        (320, "40% Alc./Vol."),
+        (380, "700 mL"),
+        (450, "Product of Scotland"),
+    ):
+        _centered(draw, y, text, _font(font_dir, sans, 34), INK, 800)
+    for y, text in ((540, "Imported by Northgate Imports"), (585, "Chicago, IL")):
+        _centered(draw, y, text, _font(font_dir, sans, 28), INK, 800)
+    _warning(
+        draw,
+        WARNING_HEADING,
+        WARNING_BODY,
+        top=700,
+        font_dir=font_dir,
+        heading_bold=False,
+        size=20,
+        left=70,
+        right=730,
+        line_height=30,
+    )
+    return image
+
+
+HELD_OUT = (
+    ("held-out-wide-two-column.png", render_wide_two_column),
+    ("held-out-tall-narrow.png", render_tall_narrow),
+)
+
+
 def main() -> None:
     args = parse_args()
     OUT_DIR.mkdir(exist_ok=True)
     for spec in SPECS:
         render(spec, args.font_dir).save(OUT_DIR / spec.filename)
+    for filename, draw_label in HELD_OUT:
+        draw_label(args.font_dir).save(OUT_DIR / filename)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.6",
+  "dataset_version": "starter-0.7",
   "notes": [
     "S01-S04 and S16 cover clear, brand-case, ABV, warning-word and warning-heading-case scenarios; S05-S15 exercise comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
@@ -8,12 +8,18 @@
     "S17 and S18 differ from S01 only in warning font weight (non-bold heading; entirely bold warning). With S01 they form the three font-weight cases for AL-13; heading and body weight are annotated from the pixels, not inferred from the renderer settings.",
     "S19-S24 add front/back evidence (S19 warning only on the back image, S20 two images with differing warning wording) and unknown evidence (S21 warning absent, S22 mild blur, S23 heavy blur, S24 smudged heading). An image's illegible_fields lists fields whose reading cannot be established from the pixels; a null visible_text value means the statement is not printed.",
     "S25-S28 are processing-failure scenarios. A provider_failure object names the image whose request fails (kind timeout, rate_limited, endpoint_blocked or invalid_response) and the expected error code; the expected outcome is a separate processing error with every check not evaluated, never a finding.",
+    "S29-S30 are held out: two layouts distinct from the starter label, reserved for the Day 3 live evaluation. They are excluded from the development regression and from every tuning script, and the rules and prompt were not run against them. Their expected outcomes are annotated from the pixels.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
   ],
   "annotation": {
     "annotator": "GitHub Copilot (VS Code agent), viewing the PNG pixels",
     "date": "2026-10-24",
     "developer_review": "pending"
+  },
+  "held_out_policy": {
+    "rule": "Held-out scenarios (split held_out) are never used to tune the extraction prompt, the comparison rules or any test expectation, and no development test or script may reference them. They are for the Day 3 live evaluation only.",
+    "limitation": "Two examples show feasibility on unseen layouts; they are far too few to estimate accuracy, and both are synthetic, clean renders.",
+    "reclassifications": []
   },
   "images": [
     {
@@ -525,6 +531,68 @@
       },
       "visible_style": {
         "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "held-out-wide-two-column",
+      "file": "labels/held-out-wide-two-column.png",
+      "layout": "wide-two-column",
+      "format": "PNG",
+      "width": 1500,
+      "height": 800,
+      "bytes": 68994,
+      "sha256": "c62874a6bf68a9fdf7cd21595bd6be5230988258ece6597faccb385de97c71f4",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": null
+      },
+      "visible_text": {
+        "brand": "BLACK HEATH",
+        "class_type": "Rye Whiskey",
+        "alcohol_content": "50% Alc./Vol. (100 Proof)",
+        "net_contents": "1 L",
+        "producer_name": "Heath Spirits Co.",
+        "producer_address": "Frankfort, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "held-out-tall-narrow",
+      "file": "labels/held-out-tall-narrow.png",
+      "layout": "tall-narrow",
+      "format": "PNG",
+      "width": 800,
+      "height": 1200,
+      "bytes": 66354,
+      "sha256": "9cbab9c71776d4e8e6bb54e5920c1b602c390c6a39f7e44bc0c1dde4454273a3",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The warning heading is printed in regular weight instead of bold."
+      },
+      "visible_text": {
+        "brand": "Northgate",
+        "class_type": "Blended Scotch Whisky",
+        "alcohol_content": "40% Alc./Vol.",
+        "net_contents": "700 mL",
+        "producer_name": "Northgate Imports",
+        "producer_address": "Chicago, IL",
+        "country_of_origin": "Product of Scotland",
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "regular weight, uppercase",
         "warning_body": "regular weight"
       }
     }
@@ -1456,6 +1524,102 @@
         "warning_heading_case": "not_evaluated",
         "warning_heading_bold": "not_evaluated",
         "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S29-held-out-wide-two-column",
+      "description": "Held out. A clean wide two-column serif label whose application matches it; net contents 1 L.",
+      "split": "held_out",
+      "deliberate_defect": null,
+      "image_files": ["labels/held-out-wide-two-column.png"],
+      "application": {
+        "application_id": "S29-held-out-wide-two-column",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [
+          {
+            "image_id": "front",
+            "uri": "tests/fixtures/labels/held-out-wide-two-column.png"
+          }
+        ],
+        "brand": "BLACK HEATH",
+        "class_type": "Rye Whiskey",
+        "alcohol_content": {
+          "measurement": {
+            "value": "50.0",
+            "unit": "percent_abv"
+          }
+        },
+        "net_contents": {
+          "measurement": {
+            "value": "1",
+            "unit": "l"
+          }
+        },
+        "producer_name": "Heath Spirits Co.",
+        "producer_address": "Frankfort, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S30-held-out-tall-narrow",
+      "description": "Held out. An imported tall narrow sans label with a regular-weight warning heading.",
+      "split": "held_out",
+      "deliberate_defect": "The warning heading is printed in regular weight.",
+      "image_files": ["labels/held-out-tall-narrow.png"],
+      "application": {
+        "application_id": "S30-held-out-tall-narrow",
+        "beverage_category": "distilled_spirits",
+        "is_imported": true,
+        "images": [
+          {
+            "image_id": "front",
+            "uri": "tests/fixtures/labels/held-out-tall-narrow.png"
+          }
+        ],
+        "brand": "Northgate",
+        "class_type": "Blended Scotch Whisky",
+        "alcohol_content": {
+          "measurement": {
+            "value": "40.0",
+            "unit": "percent_abv"
+          }
+        },
+        "net_contents": {
+          "measurement": {
+            "value": "700",
+            "unit": "ml"
+          }
+        },
+        "producer_name": "Northgate Imports",
+        "producer_address": "Chicago, IL",
+        "country_of_origin": "Scotland"
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "discrepancy",
+        "warning_body_not_bold": "match"
       }
     }
   ],
