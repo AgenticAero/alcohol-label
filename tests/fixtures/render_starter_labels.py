@@ -127,6 +127,8 @@ class LabelSpec:
     warning_body: str = WARNING_BODY
     heading_bold: bool = True
     body_bold: bool = False
+    statements: bool = True
+    warning: bool = True
 
 
 SPECS = (
@@ -163,6 +165,9 @@ SPECS = (
         "producer-new-louisville.png",
         producer_lines=("Bottled by Example Distillery", "New Louisville, KY"),
     ),
+    # Front/back pair: every statement on the front, the warning alone on the back.
+    LabelSpec("front-no-warning.png", warning=False),
+    LabelSpec("back-warning-only.png", statements=False),
 )
 
 
@@ -171,33 +176,37 @@ def render(spec: LabelSpec, font_dir: Path) -> Image.Image:
     draw = ImageDraw.Draw(image)
     draw.rectangle((30, 30, SIZE[0] - 30, SIZE[1] - 30), outline=ACCENT, width=6)
 
-    size = 120
-    while (
-        draw.textlength(spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size))
-        > 1000
-    ):
-        size -= 4
-    _centered(
-        draw, 90, spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size), ACCENT
-    )
-    _centered(draw, 250, spec.class_type, _font(font_dir, "DejaVuSerif-Bold.ttf", 46))
-    medium = _font(font_dir, "DejaVuSerif.ttf", 40)
-    if spec.alcohol:
-        _centered(draw, 340, spec.alcohol, medium)
-    _centered(draw, 410, spec.net_contents, medium)
-    small = _font(font_dir, "DejaVuSerif.ttf", 30)
     lines = (*spec.producer_lines, *((spec.origin,) if spec.origin else ()))
-    for index, line in enumerate(lines):
-        _centered(draw, 500 + 45 * index, line, small)
-    _warning(
-        draw,
-        spec.warning_heading,
-        spec.warning_body,
-        top=650 if len(lines) <= 3 else 700,
-        font_dir=font_dir,
-        heading_bold=spec.heading_bold,
-        body_bold=spec.body_bold,
-    )
+    if spec.statements:
+        size = 120
+        while (
+            draw.textlength(spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size))
+            > 1000
+        ):
+            size -= 4
+        _centered(
+            draw, 90, spec.brand, _font(font_dir, "DejaVuSerif-Bold.ttf", size), ACCENT
+        )
+        _centered(
+            draw, 250, spec.class_type, _font(font_dir, "DejaVuSerif-Bold.ttf", 46)
+        )
+        medium = _font(font_dir, "DejaVuSerif.ttf", 40)
+        if spec.alcohol:
+            _centered(draw, 340, spec.alcohol, medium)
+        _centered(draw, 410, spec.net_contents, medium)
+        small = _font(font_dir, "DejaVuSerif.ttf", 30)
+        for index, line in enumerate(lines):
+            _centered(draw, 500 + 45 * index, line, small)
+    if spec.warning:
+        _warning(
+            draw,
+            spec.warning_heading,
+            spec.warning_body,
+            top=(650 if len(lines) <= 3 else 700) if spec.statements else 380,
+            font_dir=font_dir,
+            heading_bold=spec.heading_bold,
+            body_bold=spec.body_bold,
+        )
     return image
 
 
