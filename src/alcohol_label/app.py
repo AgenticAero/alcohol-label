@@ -5,19 +5,26 @@ import streamlit as st
 
 from alcohol_label.extraction import extract_application
 from alcohol_label.intake import MAX_IMAGES, UploadedImage, build_application
+from alcohol_label.presentation import (
+    STATUS_COLORS,
+    check_label,
+    evidence_actions,
+    evidence_names,
+    failure_guidance,
+    image_names,
+    input_error_actions,
+    missing_values_note,
+    summarize,
+)
 from alcohol_label.review import review_after_extraction, unresolved_style_checks
-from alcohol_label.schemas import CheckOutcome, Measurement, Unit
+from alcohol_label.schemas import Measurement, Unit
 
 _VOLUME_UNITS = {
     "mL": Unit.MILLILITER,
     "L": Unit.LITER,
     "fl oz": Unit.FLUID_OUNCE,
 }
-_STATUS_STYLES = {
-    "match": "color: green",
-    "discrepancy": "color: red",
-    "needs review": "color: darkorange",
-}
+_STATUS_STYLES = {word: f"color: {color}" for word, color in STATUS_COLORS.items()}
 _TEXT_KEYS = (
     "application_id",
     "brand",
@@ -37,6 +44,10 @@ def _clear_form() -> None:
     st.session_state["is_imported"] = False
     # A new key is the only way to empty a file uploader.
     st.session_state["upload_version"] = st.session_state.get("upload_version", 0) + 1
+
+
+def _request_retry() -> None:
+    st.session_state["retry_verify"] = True
 
 
 def main() -> None:
@@ -81,12 +92,19 @@ def main() -> None:
     )
     uploads = [UploadedImage(f.name, f.getvalue()) for f in files]
     for upload in uploads:
-        st.image(upload.data, caption=upload.name, width=320)
+        st.image(
+            upload.data,
+            caption=upload.name,
+            alt=f"Uploaded label image {upload.name}",
+            width=320,
+        )
 
     verify_col, clear_col, _ = st.columns([1, 1, 4])
     verify = verify_col.button("Verify", type="primary")
     clear_col.button("Clear form", on_click=_clear_form)
-    if verify:
+    # Retry sets a flag because Streamlit reruns the script on every click.
+    retry = st.session_state.pop("retry_verify", False)
+    if verify or retry:
         result = build_application(
             application_id=application_id,
             brand=brand,
@@ -100,13 +118,12 @@ def main() -> None:
             country_of_origin=country_of_origin,
             uploads=uploads,
         )
-        if result.missing_fields:
-            names = ", ".join(f.value.replace("_", " ") for f in result.missing_fields)
-            st.error(f"Missing expected values: {names}")
-        if result.errors:
-            for error in result.errors:
-                st.error(error)
-        else:
+        note = missing_values_note(result.missing_fields)
+        if note:
+            st.warning(note)
+        for line in input_error_actions(result.errors):
+            st.error(line)
+        if not result.errors:
             with st.spinner("Reading text from label images..."):
                 _show_review(result.application, uploads)
 
@@ -125,68 +142,35 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
         application.images,
         [upload.data for upload in uploads],
     )
-    if extraction.metadata:
-        st.caption(
-            f"Extraction: {extraction.metadata.provider} / {extraction.metadata.model} "
-            f"(prompt {extraction.metadata.prompt_id}, schema {extraction.metadata.schema_id})"
-        )
-    if extraction.request_timings:
-        request_latencies = ", ".join(
-            f"{timing.image_id}: {timing.elapsed_seconds:.2f}s"
-            for timing in extraction.request_timings
-        )
-        st.caption(f"OpenAI Responses API request latency: {request_latencies}")
     for error in extraction.errors:
         st.error(error.message)
-
-    if extraction.fields:
-        with st.expander("Observed label fields", expanded=False):
-            headers = st.columns([1.2, 1, 5])
-            headers[0].markdown("**Field**")
-            headers[1].markdown("**State**")
-            headers[2].markdown("**Observations**")
-            for index, field in enumerate(extraction.fields):
-                field_column, state_column, observation_column = st.columns([1.2, 1, 5])
-                field_column.write(field.field_id.value.replace("_", " "))
-                state_column.write(field.state.value.replace("_", " "))
-                with observation_column:
-                    for observation in field.observations:
-                        st.text(
-                            f"{observation.raw_text} (image {observation.image_id})"
-                        )
-                    if field.explanation:
-                        st.caption(f"Note: {field.explanation}")
-                if index < len(extraction.fields) - 1:
-                    st.divider()
 
     response = review_after_extraction(
         application, extraction.errors, extraction.fields, extraction.warning_styles
     )
     results = response.check_results
-    counts = {o: sum(r.outcome is o for r in results) for o in CheckOutcome}
-    if response.all_clear:
-        st.success("# :green[✔] Pass\n\nAll supported checks passed.")
+    summary = summarize(response)
+    names = image_names(application.images)
+    if summary.all_clear:
+        st.success(f"# ✔ {summary.headline}\n\n{summary.counts_text}")
     else:
-        extraction_status = (
-            " Extraction encountered processing failures." if extraction.errors else ""
-        )
-        st.warning(
-            "# :red[✖] Not a pass\n\n"
-            f"{counts[CheckOutcome.DISCREPANCY]} discrepancy, "
-            f"{counts[CheckOutcome.NEEDS_REVIEW]} need review, "
-            f"{counts[CheckOutcome.NOT_EVALUATED]} not evaluated of "
-            f"{len(results)} checks.{extraction_status}"
-        )
+        problems = "\n\n".join(summary.problems)
+        st.warning(f"# ✖ {summary.headline}\n\n{summary.counts_text}\n\n{problems}")
+    guidance = failure_guidance(extraction.errors)
+    next_steps = (*guidance.lines, *evidence_actions(response, extraction.fields))
+    if next_steps:
+        st.subheader("What to do next")
+        for step in next_steps:
+            st.markdown(f"- {step}")
+    if guidance.can_retry:
+        st.button("Retry", key="retry_button", on_click=_request_retry)
     table = pd.DataFrame(
         {
-            "Check": [r.check_id.value.replace("_", " ") for r in results],
+            "Check": [check_label(r.check_id) for r in results],
             "Status": [r.outcome.value.replace("_", " ") for r in results],
             "Expected": [_display(r.expected_value) for r in results],
             "Observed": [_display(r.observed_value) for r in results],
-            "Evidence (image)": [
-                ", ".join(dict.fromkeys(e.image_id for e in r.evidence))
-                for r in results
-            ],
+            "Evidence (image)": [evidence_names(r, names) for r in results],
             "Reason": [r.explanation or "" for r in results],
         }
     )
@@ -196,7 +180,23 @@ def _show_review(application, uploads: list[UploadedImage]) -> None:
             subset=["Status"],
         )
     )
+    _show_label_previews(application, uploads, names)
     _show_style_review(application, uploads, response)
+    _show_technical_details(extraction)
+
+
+def _show_label_previews(
+    application, uploads: list[UploadedImage], names: dict[str, str]
+) -> None:
+    st.subheader("Label images reviewed")
+    columns = st.columns(len(uploads))
+    for column, image, upload in zip(columns, application.images, uploads, strict=True):
+        column.image(
+            upload.data,
+            caption=f"{names[image.image_id]} is {image.image_id}",
+            alt=f"Label image {names[image.image_id]}",
+            width="stretch",
+        )
 
 
 def _show_style_review(application, uploads: list[UploadedImage], response) -> None:
@@ -233,6 +233,42 @@ def _show_style_review(application, uploads: list[UploadedImage], response) -> N
                 name = result.check_id.value.replace("_", " ")
                 st.markdown(f"**{name}: needs review**")
                 st.write(result.explanation)
+
+
+def _show_technical_details(extraction) -> None:
+    if not (extraction.metadata or extraction.request_timings or extraction.fields):
+        return
+    with st.expander("Technical details", expanded=False):
+        if extraction.metadata:
+            st.caption(
+                f"Extraction: {extraction.metadata.provider} / {extraction.metadata.model} "
+                f"(prompt {extraction.metadata.prompt_id}, schema {extraction.metadata.schema_id})"
+            )
+        if extraction.request_timings:
+            request_latencies = ", ".join(
+                f"{timing.image_id}: {timing.elapsed_seconds:.2f}s"
+                for timing in extraction.request_timings
+            )
+            st.caption(f"OpenAI Responses API request latency: {request_latencies}")
+        if extraction.fields:
+            st.markdown("**Observed label fields**")
+            headers = st.columns([1.2, 1, 5])
+            headers[0].markdown("**Field**")
+            headers[1].markdown("**State**")
+            headers[2].markdown("**Observations**")
+            for index, field in enumerate(extraction.fields):
+                field_column, state_column, observation_column = st.columns([1.2, 1, 5])
+                field_column.write(field.field_id.value.replace("_", " "))
+                state_column.write(field.state.value.replace("_", " "))
+                with observation_column:
+                    for observation in field.observations:
+                        st.text(
+                            f"{observation.raw_text} (image {observation.image_id})"
+                        )
+                    if field.explanation:
+                        st.caption(f"Note: {field.explanation}")
+                if index < len(extraction.fields) - 1:
+                    st.divider()
 
 
 main()

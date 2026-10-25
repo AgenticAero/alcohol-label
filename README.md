@@ -2,7 +2,7 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-13 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11, so the AL-12 and AL-13 changes on this branch are not yet deployed. Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
+**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-13 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11, so the AL-12 to AL-14 changes on this branch are not yet deployed. The results screen now shows a summary of discrepancies and unresolved checks, next actions, and a Retry button for retryable failures (Jira AL-14). Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
 
 **Deployed application:** https://alcohol-label-staging.azurewebsites.net (the first request after idle can take over a minute).
 
@@ -27,7 +27,7 @@ The goal is a working, deployed prototype within three working days, with reprod
 - English-language U.S. distilled-spirit labels, supplied as one or two clear JPEG/PNG images.
 - Comparisons for brand, class/type, alcohol content, net contents, producer/bottler name and address, and country of origin for imports.
 - Separate checks for warning wording, uppercase heading and supported font-weight assessment.
-- Explained results with source evidence, explicit uncertainty and recoverable input/processing errors. Warning wording and uppercase heading are checked independently against 27 CFR 16.21; heading and body font weight are judged visually from the image, and an unclear or missing judgement is shown as needs review with the original image.
+- Explained results with source evidence, explicit uncertainty and recoverable input/processing errors. Warning wording and uppercase heading are checked independently against 27 CFR 16.21; heading and body font weight are judged visually from the image, and an unclear or missing judgement is shown as needs review with the original image. Each needs-review check says what to do next, for example upload a clearer image; provider and extraction details are in a collapsed Technical details section.
 - A deployed URL, focused tests and measured evaluation results.
 
 The proposed performance target is **p95 Verify-to-visible-result at or below five seconds** for the supported single-application profile. This target has not been measured or achieved. Measurement conditions and results will be recorded in [Evaluation](docs/evaluation.md).

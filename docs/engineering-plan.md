@@ -154,9 +154,19 @@ Warning font weight (AL-13), in `extraction.py`, `comparison.py`, `review.py` an
 - Weight is judged by the same model request that transcribes the label (prompt `label-extraction-v4`, schema `label-observations-v2`): a required `warning_style` object with `heading`, `body` (`bold`, `not_bold`, `uncertain`) and `reason`. No extra request is made. The judgement is a model's visual reading of the original image, not measured stroke evidence, and no type size is assessed.
 - `ExtractionResult.warning_styles` holds one `WarningStyleObservation` per processed image. A response without `warning_style` yields no observation and no error; a malformed one is an `invalid_provider_response` error. `uncertain` with no provider reason gets a fixed reason.
 - `warning_heading_bold` matches on bold and is a discrepancy on not bold; `warning_body_not_bold` matches on not bold and is a discrepancy on bold. Style counts only for an image where the warning text was also read; evidence references point at that warning observation.
-- `needs_review`, each with its own reason: no style returned (adapter lacks support or did not answer), an `uncertain` judgement (provider reason quoted), images that disagree, or style only from an image where the warning text was not read. Processing errors still prevent every comparison.
+- `needs_review`, each with its own reason: no style returned (adapter lacks support or did not answer), an `uncertain` judgement (provider reason quoted), images that disagree, style only from an image where the warning text was not read, or a warning text extraction that is `uncertain` (a weight judgement is not accepted when the text could not be read reliably; the check is made on the aggregate field, so one unclear image makes it conservative for all). Processing errors still prevent every comparison.
 - The UI shows the original image with the reason for each style check in `needs_review` (every supplied image when none is linked), labelled as manual review. Reviewing it is not automated compliance.
 - Live evidence (`docs/evaluation.md`): 18 of 18 style outcomes matched the annotations on three clear synthetic fixtures, three runs each. This does not cover ambiguous, photographed or held-out labels.
+
+Reviewer results and next actions (AL-14), in `presentation.py`, `app.py` and `.streamlit/config.toml`. Decisions:
+
+- `presentation.py` has no UI imports so it can be tested: `summarize` counts all five outcomes and names discrepancies and unresolved checks (all-clear still comes from `ReviewResponse.all_clear`); `evidence_actions` turns needs-review checks into instructions from the field's extraction state; `failure_guidance` maps each error code to wording and offers Retry only if an error is retryable; `input_error_actions` and `missing_values_note` say what to fix.
+- Missing expected values are a warning, not an error: Verify still runs and those checks stay not evaluated.
+- Retry sets a session flag read as a Verify click, because Streamlit reruns the script on every click; entries and uploads are kept. Non-retryable errors get no Retry button.
+- Evidence is shown by file name, with the image ID added only when names repeat. Label previews sit with the results.
+- Provider, model, latency and raw observed fields are in a collapsed "Technical details" section.
+- The light theme is pinned in `.streamlit/config.toml` and status colours are in `STATUS_COLORS`; tests require at least 4.5:1 against the theme backgrounds. Streamlit's own alert tints are not covered.
+- Deeper bad-upload, image-quality and orientation handling stays with AL-16.
 
 Serialization and boundary validation (AL-28), in `src/alcohol_label/schemas.py`. Decisions:
 

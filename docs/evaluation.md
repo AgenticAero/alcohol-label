@@ -179,6 +179,29 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Automation coverage:** automatic heading and body weight assessment worked on the three clear fixtures within the timebox; the requirement is therefore not recorded as unmet for these inputs. Where the model is uncertain, returns no style or the images disagree, the check is `needs_review` with the original image and a reason shown. That visual-review path is a fallback and is not automated compliance. Physical type size is not assessed.
 - **Offline checks:** `poetry run pytest` (381 passed), `poetry run ruff check .` (passed), `poetry run ruff format --check .` (passed). These validate contracts and rules with mocked provider output, not live accuracy.
 
+### AL-14 reviewer-workflow walkthrough (2026-10-25)
+
+- **Setup:** commit `7ee3059` on branch `al-14-`, run locally (not the deployed app) with `poetry run streamlit run` and driven in the integrated browser. Provider: OpenAI Responses API, model `gpt-6-luna`, prompt `label-extraction-v4`. Images were uploaded from the committed fixtures. Single run per state; this is a walkthrough, not an accuracy or performance measurement.
+
+| State | Input | Observed on screen |
+| --- | --- | --- |
+| Input errors | Empty form, **Verify** | Warning "Expected values not entered: brand, class type, ... until then they are not evaluated"; errors "Application ID is required. Enter it, then click Verify." and "Upload at least one label image. Choose a label image, then click Verify." No provider call. |
+| Match | S01 values, `starter-clear.png` | "Pass: all supported checks passed. Of 11 checks: 10 matched, 0 discrepancy, 0 needs review, 0 not evaluated, 1 not applicable." Table shows status word, expected, observed, file-name evidence and reason; the two style rows say "Judged from the image; physical type size is not assessed." |
+| Discrepancy | Same image, ABV changed to 40 | "Not a pass ... 9 matched, 1 discrepancy ... Discrepancies: alcohol content." Row: "Label states 45%; expected 40%." No "What to do next" section. |
+| Review needed | S01 values, `starter-clear-blur-r8.png` | "Not a pass ... 3 matched, 7 needs review, 1 not applicable. Needs review: class type, alcohol content, net contents, producer name, producer address, warning wording, warning heading case." "What to do next" lists "The class type could not be read reliably. Upload a clearer, closer image of it." (and five more fields). Technical details expander collapsed. |
+| Failure and retry | Local proxy returned HTTP 429 to the first request, then forwarded | Error "Extraction failed for image image-1..."; "Not a pass ... 10 not evaluated ... Processing failed (1 error)". Steps: "The extraction service is busy. Wait a moment, then retry." and "Your entries and images are kept; use Retry to run Verify again." One **Retry** button. Clicking it re-ran Verify with the form and upload kept and gave "Pass ... 10 matched"; the failure steps and Retry button disappeared. |
+
+- **Keyboard:** tab order was Application ID, brand, class/type, ABV, net contents, unit, producer name, address, imported toggle, upload, Verify, Clear form. Streamlit's own heading-anchor links are also focus stops. Screen-reader behavior was not tested.
+- **Contrast:** status colours are 6.57 to 7.87 against white and 5.86 to 7.02 against the secondary background (WCAG AA needs 4.5); checked by `tests/test_presentation.py`. Streamlit's own alert tints were judged by eye only. The previous `green`, `red` and `darkorange` were 5.14, 4.00 and 2.33 against white.
+- **Findings, not yet fixed:**
+  1. **Fixed after the walkthrough.** On `starter-clear-blur-r8.png` the warning text was `uncertain` and two warning-text checks needed review, yet heading bold and body not bold were both reported `match` from the same image. Style is now `needs_review` whenever the warning text extraction is `uncertain` ("the warning text could not be read reliably, so the ... weight judgement is not accepted"). A later single live run on the same image gave warning text `uncertain`, model judgement bold / not bold, and both style checks `needs_review`, so the review was not all-clear. One run only; the 18 AL-13 outcomes were not re-run, but those fixtures have readable warning text.
+  2. The first-line error for any provider failure reads "Check provider configuration and connectivity", even for a rate limit, and names `image-1` rather than the file.
+  3. The upload control advertises "200MB per file" while the app rejects files over 10 MiB.
+  4. Six separate "could not be read reliably" steps repeat the same advice.
+  5. The extraction request for the blurred image took 16.92 s (other runs 3.66 s).
+- **Not done:** the deployed app was not smoke-checked (the staging deployment is older than this branch), and the non-retryable failure and Visual review needed sections were not exercised in the browser; they are covered by offline tests and Streamlit test-harness runs only.
+- **Offline checks:** `poetry run pytest` (422 passed), `poetry run ruff check .` and `poetry run ruff format --check .` passed.
+
 ### Run context
 
 | Item | Recorded value |

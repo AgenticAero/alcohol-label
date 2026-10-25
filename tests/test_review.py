@@ -332,3 +332,29 @@ def test_unresolved_style_without_evidence_offers_every_supplied_image():
 def test_resolved_style_checks_are_not_offered_for_visual_review():
     assert _style_items((_style(),)) == ()
     assert _style_items((_style("not_bold", "bold"),)) == ()
+
+
+def test_review_does_not_pass_style_when_the_warning_text_is_uncertain():
+    fields = [f for f in _fields() if f.field_id is not FieldId.WARNING_TEXT]
+    fields.append(
+        ExtractedField(
+            FieldId.WARNING_TEXT,
+            ExtractionState.UNCERTAIN,
+            (Observation("GOVERNMENT WARNING: (1) According ...", "front"),),
+            "Blurred.",
+        )
+    )
+
+    response = review_after_extraction(
+        _application(), (), tuple(fields), (_style("bold", "not_bold"),)
+    )
+    results = _results(response)
+
+    for check in (CheckId.WARNING_HEADING_BOLD, CheckId.WARNING_BODY_NOT_BOLD):
+        assert results[check].outcome is CheckOutcome.NEEDS_REVIEW
+    assert not response.all_clear
+    items = unresolved_style_checks(response, ["image-1"])
+    assert [r.check_id for r, _ in items] == [
+        CheckId.WARNING_HEADING_BOLD,
+        CheckId.WARNING_BODY_NOT_BOLD,
+    ]

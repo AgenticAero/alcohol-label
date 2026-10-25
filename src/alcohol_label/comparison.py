@@ -238,6 +238,16 @@ def _compare_style(
         EvidenceRef(FieldId.WARNING_TEXT, read_at[s.image_id], s.image_id)
         for s in usable
     )
+    if extracted.state is ExtractionState.UNCERTAIN:
+        return _style_result(
+            check,
+            review,
+            expected,
+            None,
+            f"The warning text could not be read reliably, so the {part} "
+            "weight judgement is not accepted; inspect the label image.",
+            evidence,
+        )
     judgements = [(s, getattr(s, part)) for s in usable]
     unsure = [(s, j) for s, j in judgements if j is StyleJudgement.UNCERTAIN]
     if unsure:
