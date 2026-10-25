@@ -1,7 +1,12 @@
+import tomllib
+from pathlib import Path
+
 import pytest
 
 from alcohol_label.presentation import (
+    STATUS_COLORS,
     check_label,
+    contrast_ratio,
     evidence_actions,
     evidence_names,
     failure_guidance,
@@ -389,3 +394,37 @@ def test_missing_expected_values_are_a_note_not_an_error():
     assert "brand, class type" in note
     assert "not evaluated" in note
     assert missing_values_note(()) is None
+
+
+THEME = tomllib.loads(
+    (Path(__file__).parents[1] / ".streamlit" / "config.toml").read_text()
+)["theme"]
+AA_NORMAL_TEXT = 4.5
+
+
+def test_contrast_ratio_matches_known_wcag_values():
+    assert contrast_ratio("#000000", "#FFFFFF") == pytest.approx(21.0)
+    assert contrast_ratio("#FFFFFF", "#FFFFFF") == pytest.approx(1.0)
+    assert contrast_ratio("#FFFFFF", "#000000") == pytest.approx(21.0)
+    assert contrast_ratio("#767676", "#FFFFFF") == pytest.approx(4.54, abs=0.01)
+
+
+def test_theme_is_pinned_to_light_so_checked_contrast_holds():
+    assert THEME["base"] == "light"
+    assert {"primaryColor", "backgroundColor", "secondaryBackgroundColor"} <= set(THEME)
+
+
+@pytest.mark.parametrize("word", STATUS_COLORS)
+@pytest.mark.parametrize("background", ["backgroundColor", "secondaryBackgroundColor"])
+def test_status_colours_meet_aa_on_theme_backgrounds(word, background):
+    assert contrast_ratio(STATUS_COLORS[word], THEME[background]) >= AA_NORMAL_TEXT
+
+
+def test_every_outcome_has_a_status_colour_keyed_by_its_displayed_word():
+    assert set(STATUS_COLORS) == {o.value.replace("_", " ") for o in CheckOutcome}
+
+
+def test_theme_text_and_button_colours_meet_aa():
+    for background in ("backgroundColor", "secondaryBackgroundColor"):
+        assert contrast_ratio(THEME["textColor"], THEME[background]) >= AA_NORMAL_TEXT
+    assert contrast_ratio("#FFFFFF", THEME["primaryColor"]) >= AA_NORMAL_TEXT

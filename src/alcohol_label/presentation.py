@@ -239,3 +239,29 @@ def input_error_actions(errors: Sequence[str]) -> tuple[str, ...]:
             fix = "Replace or remove that file, then click Verify."
         lines.append(f"{error} {fix}")
     return tuple(lines)
+
+
+# Status text colours on the theme background; tests keep them above WCAG AA.
+STATUS_COLORS = {
+    "match": "#1B5E20",
+    "discrepancy": "#B71C1C",
+    "needs review": "#8A4B00",
+    "not evaluated": "#595959",
+    "not applicable": "#595959",
+}
+
+
+def _channel(value: int) -> float:
+    s = value / 255
+    return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
+
+
+def _luminance(hex_color: str) -> float:
+    r, g, b = (int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    return 0.2126 * _channel(r) + 0.7152 * _channel(g) + 0.0722 * _channel(b)
+
+
+def contrast_ratio(foreground: str, background: str) -> float:
+    """WCAG 2 contrast ratio of two #RRGGBB colours, from 1 to 21."""
+    lighter, darker = sorted((_luminance(foreground), _luminance(background)))[::-1]
+    return (lighter + 0.05) / (darker + 0.05)
