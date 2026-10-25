@@ -1,17 +1,25 @@
 {
   "manifest_version": 1,
-  "dataset_version": "starter-0.4",
+  "dataset_version": "starter-0.7",
   "notes": [
     "S01-S04 and S16 cover clear, brand-case, ABV, warning-word and warning-heading-case scenarios; S05-S15 exercise comparison rules. Applications use the application_to_dict format from src/alcohol_label/schemas.py.",
     "expected_outcomes are pixel ground truth for what is visible on the label. They are not predictions of extractor output: an extractor that cannot establish font weight must report needs_review for the two warning style checks.",
     "Scenarios S02 and S03 reuse the clear image and change only the expected application value, so they test comparison rules, not extraction variety.",
     "S17 and S18 differ from S01 only in warning font weight (non-bold heading; entirely bold warning). With S01 they form the three font-weight cases for AL-13; heading and body weight are annotated from the pixels, not inferred from the renderer settings.",
+    "S19-S24 add front/back evidence (S19 warning only on the back image, S20 two images with differing warning wording) and unknown evidence (S21 warning absent, S22 mild blur, S23 heavy blur, S24 smudged heading). An image's illegible_fields lists fields whose reading cannot be established from the pixels; a null visible_text value means the statement is not printed.",
+    "S25-S28 are processing-failure scenarios. A provider_failure object names the image whose request fails (kind timeout, rate_limited, endpoint_blocked or invalid_response) and the expected error code; the expected outcome is a separate processing error with every check not evaluated, never a finding.",
+    "S29-S30 are held out: two layouts distinct from the starter label, reserved for the Day 3 live evaluation. They are excluded from the development regression and from every tuning script, and the rules and prompt were not run against them. Their expected outcomes are annotated from the pixels.",
     "Annotations were made by inspecting the rendered pixels. Developer review is pending. All starter scenarios are development data; no held-out split exists yet."
   ],
   "annotation": {
     "annotator": "GitHub Copilot (VS Code agent), viewing the PNG pixels",
     "date": "2026-10-24",
     "developer_review": "pending"
+  },
+  "held_out_policy": {
+    "rule": "Held-out scenarios (split held_out) are never used to tune the extraction prompt, the comparison rules or any test expectation, and no development test or script may reference them. They are for the Day 3 live evaluation only.",
+    "limitation": "Two examples show feasibility on unseen layouts; they are far too few to estimate accuracy, and both are synthetic, clean renders.",
+    "reclassifications": []
   },
   "images": [
     {
@@ -192,7 +200,8 @@
       "visible_style": {
         "warning_heading": "cannot be determined (smudged)",
         "warning_body": "regular weight"
-      }
+      },
+      "illegible_fields": ["warning_text"]
     },
     {
       "image_id": "starter-clear-blur-r4",
@@ -252,7 +261,8 @@
       "visible_style": {
         "warning_heading": "cannot be determined reliably (heavily blurred; looks heavier than the body)",
         "warning_body": "cannot be determined reliably (heavily blurred)"
-      }
+      },
+      "illegible_fields": ["alcohol_content", "warning_text"]
     },
     {
       "image_id": "import-product-of",
@@ -461,6 +471,128 @@
       },
       "visible_style": {
         "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "front-no-warning",
+      "file": "labels/front-no-warning.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 46432,
+      "sha256": "dc0898a7547bded6526220e6936457615513a496f8050e2751b97e2955737ea2",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "No government warning is printed; all other statements match starter-clear. Intended as the front of a front/back pair with back-warning-only."
+      },
+      "visible_text": {
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null,
+        "warning_heading": null,
+        "warning_body": null
+      },
+      "visible_style": {
+        "warning_heading": null,
+        "warning_body": null
+      }
+    },
+    {
+      "image_id": "back-warning-only",
+      "file": "labels/back-warning-only.png",
+      "format": "PNG",
+      "width": 1200,
+      "height": 900,
+      "bytes": 33435,
+      "sha256": "7f497d87a82fc2fdb8f85b115a5b09c771c4f0619ec54affc5e3fd0acbd6bfb1",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "Only the government warning is printed; no other label statements. Intended as the back of a front/back pair with front-no-warning."
+      },
+      "visible_text": {
+        "brand": null,
+        "class_type": null,
+        "alcohol_content": null,
+        "net_contents": null,
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "held-out-wide-two-column",
+      "file": "labels/held-out-wide-two-column.png",
+      "layout": "wide-two-column",
+      "format": "PNG",
+      "width": 1500,
+      "height": 800,
+      "bytes": 68994,
+      "sha256": "c62874a6bf68a9fdf7cd21595bd6be5230988258ece6597faccb385de97c71f4",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": null
+      },
+      "visible_text": {
+        "brand": "BLACK HEATH",
+        "class_type": "Rye Whiskey",
+        "alcohol_content": "50% Alc./Vol. (100 Proof)",
+        "net_contents": "1 L",
+        "producer_name": "Heath Spirits Co.",
+        "producer_address": "Frankfort, KY",
+        "country_of_origin": null,
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "bold, uppercase",
+        "warning_body": "regular weight"
+      }
+    },
+    {
+      "image_id": "held-out-tall-narrow",
+      "file": "labels/held-out-tall-narrow.png",
+      "layout": "tall-narrow",
+      "format": "PNG",
+      "width": 800,
+      "height": 1200,
+      "bytes": 66354,
+      "sha256": "9cbab9c71776d4e8e6bb54e5920c1b602c390c6a39f7e44bc0c1dde4454273a3",
+      "provenance": {
+        "type": "synthetic",
+        "generator": "tests/fixtures/render_starter_labels.py (Pillow 13.0.0, DejaVu fonts)",
+        "permitted_use": "Fictional label created for this project; no third-party content.",
+        "defect": "The warning heading is printed in regular weight instead of bold."
+      },
+      "visible_text": {
+        "brand": "Northgate",
+        "class_type": "Blended Scotch Whisky",
+        "alcohol_content": "40% Alc./Vol.",
+        "net_contents": "700 mL",
+        "producer_name": "Northgate Imports",
+        "producer_address": "Chicago, IL",
+        "country_of_origin": "Product of Scotland",
+        "warning_heading": "GOVERNMENT WARNING:",
+        "warning_body": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+      },
+      "visible_style": {
+        "warning_heading": "regular weight, uppercase",
         "warning_body": "regular weight"
       }
     }
@@ -1057,6 +1189,436 @@
         "warning_wording": "match",
         "warning_heading_case": "match",
         "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S19-front-back-warning-on-back",
+      "description": "Front image has every statement except the warning; the back image carries the complete warning.",
+      "split": "development",
+      "deliberate_defect": null,
+      "image_files": ["labels/front-no-warning.png", "labels/back-warning-only.png"],
+      "application": {
+        "application_id": "S19-front-back-warning-on-back",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/front-no-warning.png"}, {"image_id": "back", "uri": "tests/fixtures/labels/back-warning-only.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S20-front-back-warning-conflict",
+      "description": "Two images agree on every statement but print different warning wording.",
+      "split": "development",
+      "deliberate_defect": "The back image reads \"affects\" where the front reads \"impairs\".",
+      "image_files": ["labels/starter-clear.png", "labels/starter-warning-changed.png"],
+      "application": {
+        "application_id": "S20-front-back-warning-conflict",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}, {"image_id": "back", "uri": "tests/fixtures/labels/starter-warning-changed.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "needs_review",
+        "warning_heading_case": "needs_review",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S21-warning-absent",
+      "description": "Only the front image is supplied and no government warning is printed on it.",
+      "split": "development",
+      "deliberate_defect": "No warning is visible in the supplied image.",
+      "image_files": ["labels/front-no-warning.png"],
+      "application": {
+        "application_id": "S21-warning-absent",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/front-no-warning.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "needs_review",
+        "warning_heading_case": "needs_review",
+        "warning_heading_bold": "needs_review",
+        "warning_body_not_bold": "needs_review"
+      }
+    },
+    {
+      "scenario_id": "S22-blur-mild-legible",
+      "description": "The whole label is blurred, but all text including the warning is still legible.",
+      "split": "development",
+      "deliberate_defect": "Uniform blur (radius 4 per the file name).",
+      "image_files": ["labels/starter-clear-blur-r4.png"],
+      "application": {
+        "application_id": "S22-blur-mild-legible",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear-blur-r4.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S23-blur-heavy-unreadable",
+      "description": "The whole label is heavily blurred: the ABV digits and the warning cannot be read reliably.",
+      "split": "development",
+      "deliberate_defect": "Uniform heavy blur (radius 8 per the file name).",
+      "image_files": ["labels/starter-clear-blur-r8.png"],
+      "application": {
+        "application_id": "S23-blur-heavy-unreadable",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear-blur-r8.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "needs_review",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "needs_review",
+        "warning_heading_case": "needs_review",
+        "warning_heading_bold": "needs_review",
+        "warning_body_not_bold": "needs_review"
+      }
+    },
+    {
+      "scenario_id": "S24-warning-heading-smudged",
+      "description": "The warning heading is partly smudged so the warning cannot be read exactly.",
+      "split": "development",
+      "deliberate_defect": "The start of the warning heading is garbled.",
+      "image_files": ["labels/warn-heading-blurry.png"],
+      "application": {
+        "application_id": "S24-warning-heading-smudged",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/warn-heading-blurry.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "needs_review",
+        "warning_heading_case": "needs_review",
+        "warning_heading_bold": "needs_review",
+        "warning_body_not_bold": "needs_review"
+      }
+    },
+    {
+      "scenario_id": "S25-provider-timeout",
+      "description": "The extraction request times out; no label text is available.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "timeout", "expected_code": "provider_timeout"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S25-provider-timeout",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S26-provider-rate-limited",
+      "description": "The extraction provider rejects the request as rate limited.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "rate_limited", "expected_code": "rate_limited"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S26-provider-rate-limited",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S27-provider-invalid-response",
+      "description": "The extraction provider returns a response that is not valid structured output.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "front", "kind": "invalid_response", "expected_code": "invalid_provider_response"},
+      "image_files": ["labels/starter-clear.png"],
+      "application": {
+        "application_id": "S27-provider-invalid-response",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/starter-clear.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S28-provider-failure-one-of-two-images",
+      "description": "The front image is extracted but the request for the back image is blocked; no check may pass.",
+      "split": "development",
+      "deliberate_defect": null,
+      "provider_failure": {"image": "back", "kind": "endpoint_blocked", "expected_code": "endpoint_blocked"},
+      "image_files": ["labels/front-no-warning.png", "labels/back-warning-only.png"],
+      "application": {
+        "application_id": "S28-provider-failure-one-of-two-images",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [{"image_id": "front", "uri": "tests/fixtures/labels/front-no-warning.png"}, {"image_id": "back", "uri": "tests/fixtures/labels/back-warning-only.png"}],
+        "brand": "OLD TOM",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": {"measurement": {"value": "45.0", "unit": "percent_abv"}},
+        "net_contents": {"measurement": {"value": "750", "unit": "ml"}},
+        "producer_name": "Example Distillery",
+        "producer_address": "Louisville, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "not_evaluated",
+        "class_type": "not_evaluated",
+        "alcohol_content": "not_evaluated",
+        "net_contents": "not_evaluated",
+        "producer_name": "not_evaluated",
+        "producer_address": "not_evaluated",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "not_evaluated",
+        "warning_heading_case": "not_evaluated",
+        "warning_heading_bold": "not_evaluated",
+        "warning_body_not_bold": "not_evaluated"
+      }
+    },
+    {
+      "scenario_id": "S29-held-out-wide-two-column",
+      "description": "Held out. A clean wide two-column serif label whose application matches it; net contents 1 L.",
+      "split": "held_out",
+      "deliberate_defect": null,
+      "image_files": ["labels/held-out-wide-two-column.png"],
+      "application": {
+        "application_id": "S29-held-out-wide-two-column",
+        "beverage_category": "distilled_spirits",
+        "is_imported": false,
+        "images": [
+          {
+            "image_id": "front",
+            "uri": "tests/fixtures/labels/held-out-wide-two-column.png"
+          }
+        ],
+        "brand": "BLACK HEATH",
+        "class_type": "Rye Whiskey",
+        "alcohol_content": {
+          "measurement": {
+            "value": "50.0",
+            "unit": "percent_abv"
+          }
+        },
+        "net_contents": {
+          "measurement": {
+            "value": "1",
+            "unit": "l"
+          }
+        },
+        "producer_name": "Heath Spirits Co.",
+        "producer_address": "Frankfort, KY",
+        "country_of_origin": null
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "not_applicable",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "match",
+        "warning_body_not_bold": "match"
+      }
+    },
+    {
+      "scenario_id": "S30-held-out-tall-narrow",
+      "description": "Held out. An imported tall narrow sans label with a regular-weight warning heading.",
+      "split": "held_out",
+      "deliberate_defect": "The warning heading is printed in regular weight.",
+      "image_files": ["labels/held-out-tall-narrow.png"],
+      "application": {
+        "application_id": "S30-held-out-tall-narrow",
+        "beverage_category": "distilled_spirits",
+        "is_imported": true,
+        "images": [
+          {
+            "image_id": "front",
+            "uri": "tests/fixtures/labels/held-out-tall-narrow.png"
+          }
+        ],
+        "brand": "Northgate",
+        "class_type": "Blended Scotch Whisky",
+        "alcohol_content": {
+          "measurement": {
+            "value": "40.0",
+            "unit": "percent_abv"
+          }
+        },
+        "net_contents": {
+          "measurement": {
+            "value": "700",
+            "unit": "ml"
+          }
+        },
+        "producer_name": "Northgate Imports",
+        "producer_address": "Chicago, IL",
+        "country_of_origin": "Scotland"
+      },
+      "expected_outcomes": {
+        "brand": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "warning_wording": "match",
+        "warning_heading_case": "match",
+        "warning_heading_bold": "discrepancy",
         "warning_body_not_bold": "match"
       }
     }

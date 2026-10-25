@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -24,6 +23,7 @@ from alcohol_label.schemas import (
     ApplicationData,
     CheckId,
     CheckOutcome,
+    ErrorCode,
     ExtractedField,
     ExtractionState,
     FieldId,
@@ -34,11 +34,7 @@ from alcohol_label.schemas import (
     application_to_dict,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures"
-MANIFEST = json.loads((FIXTURES / "manifest.json").read_text())
-SCENARIOS = {s["scenario_id"]: s for s in MANIFEST["scenarios"]}
-STARTERS = {i["file"]: i for i in MANIFEST["images"]}
-REFERENCES = {i["file"]: i for i in MANIFEST["reference_images"]["images"]}
+from .support import FIXTURES, MANIFEST, REFERENCES, SCENARIOS, STARTERS
 
 
 def _application(scenario_id: str) -> dict:
@@ -47,6 +43,38 @@ def _application(scenario_id: str) -> dict:
 
 def _differences(a: dict, b: dict) -> set[str]:
     return {key for key in a if a[key] != b[key]}
+
+
+_WARNING_CHECKS = (
+    "warning_wording",
+    "warning_heading_case",
+    "warning_heading_bold",
+    "warning_body_not_bold",
+)
+
+
+def _images_of(scenario: dict) -> list[dict]:
+    return [STARTERS[f] for f in scenario["image_files"]]
+
+
+def _is_simple(scenario: dict) -> bool:
+    """One image, every statement legible, warning printed: checked field by field."""
+    (image,) = _images_of(scenario) if len(scenario["image_files"]) == 1 else (None,)
+    return (
+        image is not None
+        and not image.get("illegible_fields")
+        and "provider_failure" not in scenario
+        and image["visible_text"]["warning_heading"] is not None
+    )
+
+
+DEVELOPMENT_SCENARIOS = {
+    sid: s for sid, s in SCENARIOS.items() if s["split"] == "development"
+}
+HELD_OUT_SCENARIOS = {
+    sid: s for sid, s in SCENARIOS.items() if s["split"] == "held_out"
+}
+SIMPLE_SCENARIOS = {sid: s for sid, s in DEVELOPMENT_SCENARIOS.items() if _is_simple(s)}
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
@@ -69,7 +97,7 @@ def test_scenario_images_exist_and_match_application_references(scenario):
     assert uris == files
     assert all(f in STARTERS for f in scenario["image_files"])
     assert all((FIXTURES / f).is_file() for f in scenario["image_files"])
-    assert scenario["split"] == "development"
+    assert scenario["split"] in {"development", "held_out"}
 
 
 def test_every_stored_image_is_listed_once_with_matching_file_facts():
@@ -314,7 +342,9 @@ def test_warning_text_checks_match_starter_annotations(
     assert compare_warning_heading_case(extracted).outcome is expected_heading_case
 
 
-@pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
+@pytest.mark.parametrize(
+    "scenario", SIMPLE_SCENARIOS.values(), ids=SIMPLE_SCENARIOS.keys()
+)
 def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
     """Offline check of the comparison rules against annotated pixels, not extraction."""
     application = application_from_dict(scenario["application"])
@@ -358,7 +388,9 @@ def test_annotated_label_text_yields_the_expected_field_outcomes(scenario):
     }
 
 
-@pytest.mark.parametrize("scenario", SCENARIOS.values(), ids=SCENARIOS.keys())
+@pytest.mark.parametrize(
+    "scenario", SIMPLE_SCENARIOS.values(), ids=SIMPLE_SCENARIOS.keys()
+)
 def test_review_of_annotated_label_text_matches_expected_field_outcomes(scenario):
     from alcohol_label.review import review_after_extraction
 
@@ -414,3 +446,166 @@ def test_style_comparators_reproduce_annotated_font_weight_outcomes(scenario_id)
     expected = scenario["expected_outcomes"]
     assert heading.outcome.value == expected["warning_heading_bold"]
     assert body.outcome.value == expected["warning_body_not_bold"]
+
+
+def test_illegible_fields_name_real_fields_and_only_appear_on_known_images():
+    valid = {f.value for f in FieldId}
+    for entry in STARTERS.values():
+        assert set(entry.get("illegible_fields", [])) <= valid, entry["file"]
+
+
+def test_expected_outcomes_follow_the_legibility_and_absence_annotations():
+    """Unreadable or unprinted evidence is never expected to be a match."""
+    for sid, scenario in SCENARIOS.items():
+        outcomes = scenario["expected_outcomes"]
+        for image in _images_of(scenario):
+            if "alcohol_content" in image.get("illegible_fields", []):
+                assert outcomes["alcohol_content"] == "needs_review", sid
+        warning_unreadable = all(
+            "warning_text" in image.get("illegible_fields", [])
+            or image["visible_text"]["warning_heading"] is None
+            for image in _images_of(scenario)
+        )
+        if warning_unreadable:
+            for check in _WARNING_CHECKS:
+                assert outcomes[check] == "needs_review", (sid, check)
+
+
+def test_front_back_scenarios_split_the_statements_across_two_images():
+    both = SCENARIOS["S19-front-back-warning-on-back"]
+    front, back = _images_of(both)
+
+    assert both["image_files"] == [
+        "labels/front-no-warning.png",
+        "labels/back-warning-only.png",
+    ]
+    assert front["visible_text"]["warning_heading"] is None
+    assert front["visible_text"]["brand"] == "OLD TOM"
+    assert back["visible_text"]["brand"] is None
+    assert back["visible_text"]["warning_heading"] == "GOVERNMENT WARNING:"
+    assert set(both["expected_outcomes"].values()) == {"match", "not_applicable"}
+
+    conflict = SCENARIOS["S20-front-back-warning-conflict"]
+    one, other = _images_of(conflict)
+    assert {
+        k
+        for k in one["visible_text"]
+        if one["visible_text"][k] != other["visible_text"][k]
+    } == {"warning_body"}
+    assert conflict["expected_outcomes"]["warning_wording"] == "needs_review"
+    assert conflict["expected_outcomes"]["brand"] == "match"
+
+
+def _covers(predicate) -> list[str]:
+    return [sid for sid, s in DEVELOPMENT_SCENARIOS.items() if predicate(s)]
+
+
+def _discrepant(check: str):
+    return lambda s: s["expected_outcomes"][check] == "discrepancy"
+
+
+def test_scenarios_cover_every_regression_category_in_the_acceptance_criteria():
+    def all_clear(s):
+        return set(s["expected_outcomes"].values()) <= {"match", "not_applicable"}
+
+    def brand_case_only(s):
+        brand = s["application"]["brand"]
+        shown = _images_of(s)[0]["visible_text"]["brand"]
+        return brand != shown and brand.casefold() == shown.casefold()
+
+    def volume_equivalence(s):
+        net = s["application"]["net_contents"]["measurement"]
+        return net["unit"] != "ml" and s["expected_outcomes"]["net_contents"] == "match"
+
+    categories = {
+        "clear match": _covers(lambda s: all_clear(s) and len(s["image_files"]) == 1),
+        "brand case": _covers(brand_case_only),
+        "numeric mismatch": _covers(_discrepant("alcohol_content")),
+        "volume equivalence": _covers(volume_equivalence),
+        "warning text": _covers(_discrepant("warning_wording")),
+        "warning case": _covers(_discrepant("warning_heading_case")),
+        "warning style": _covers(_discrepant("warning_heading_bold"))
+        + _covers(_discrepant("warning_body_not_bold")),
+        "front/back evidence": _covers(lambda s: len(s["image_files"]) == 2),
+        "processing failure": _covers(lambda s: "provider_failure" in s),
+        "unknown evidence": _covers(
+            lambda s: "needs_review" in s["expected_outcomes"].values()
+        ),
+    }
+
+    assert len(DEVELOPMENT_SCENARIOS) >= 10
+    assert {name: ids for name, ids in categories.items() if not ids} == {}
+    assert len(categories["front/back evidence"]) >= 2
+
+
+def test_provider_failure_scenarios_expect_an_error_and_no_finding():
+    failing = {sid: s for sid, s in SCENARIOS.items() if "provider_failure" in s}
+    codes = {code.value for code in ErrorCode}
+    kinds = {"timeout", "rate_limited", "endpoint_blocked", "invalid_response"}
+
+    assert len(failing) >= 3
+    for sid, scenario in failing.items():
+        failure = scenario["provider_failure"]
+        image_ids = {i["image_id"] for i in scenario["application"]["images"]}
+        assert failure["kind"] in kinds, sid
+        assert failure["image"] in image_ids, sid
+        assert failure["expected_code"] in codes, sid
+        assert set(scenario["expected_outcomes"].values()) == {
+            "not_evaluated",
+            "not_applicable",
+        }, sid
+    assert {s["provider_failure"]["kind"] for s in failing.values()} == kinds
+
+
+def _code_files() -> list[Path]:
+    root = Path(__file__).parents[1]
+    return [
+        *sorted((root / "tests").glob("*.py")),
+        *sorted((root / "scripts").glob("*.py")),
+        *sorted((root / "src").rglob("*.py")),
+    ]
+
+
+def test_held_out_scenarios_are_reserved_with_distinct_layouts():
+    policy = MANIFEST["held_out_policy"]
+    sizes = {(1200, 900)}
+    layouts = set()
+
+    assert len(HELD_OUT_SCENARIOS) >= 2
+    assert policy["reclassifications"] == []
+    assert policy["rule"].strip() and policy["limitation"].strip()
+    for sid, scenario in HELD_OUT_SCENARIOS.items():
+        (image,) = _images_of(scenario)
+        assert image["layout"] not in layouts, sid
+        layouts.add(image["layout"])
+        assert (image["width"], image["height"]) not in sizes, sid
+        sizes.add((image["width"], image["height"]))
+        assert image["provenance"]["type"] == "synthetic", sid
+        assert set(scenario["expected_outcomes"]) == {c.value for c in CheckId}
+
+
+def test_split_values_are_known_and_held_out_images_are_not_shared_with_development():
+    assert {s["split"] for s in SCENARIOS.values()} <= {"development", "held_out"}
+    held_out_files = {f for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]}
+    development_files = {
+        f for s in DEVELOPMENT_SCENARIOS.values() for f in s["image_files"]
+    }
+
+    assert held_out_files and held_out_files.isdisjoint(development_files)
+
+
+def test_no_test_script_or_source_references_a_held_out_scenario_or_image():
+    names = [
+        *HELD_OUT_SCENARIOS,
+        *(f for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]),
+        *(Path(f).name for s in HELD_OUT_SCENARIOS.values() for f in s["image_files"]),
+        *(_images_of(s)[0]["image_id"] for s in HELD_OUT_SCENARIOS.values()),
+    ]
+
+    offenders = {
+        path.name: [n for n in names if n in path.read_text()]
+        for path in _code_files()
+        if any(n in path.read_text() for n in names)
+    }
+
+    assert offenders == {}

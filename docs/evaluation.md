@@ -202,6 +202,38 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Not done:** the deployed app was not smoke-checked (the staging deployment is older than this branch), and the non-retryable failure and Visual review needed sections were not exercised in the browser; they are covered by offline tests and Streamlit test-harness runs only.
 - **Offline checks:** `poetry run pytest` (422 passed), `poetry run ruff check .` and `poetry run ruff format --check .` passed.
 
+### Held-out examples reserved for Day 3 (AL-153)
+
+- **What is held out:** `S29-held-out-wide-two-column` (1500x800, left-aligned two-column serif layout, 1 L net contents, clean match) and `S30-held-out-tall-narrow` (800x1200, centered sans layout, imported, regular-weight warning heading). Both are synthetic renders from `tests/fixtures/render_starter_labels.py` with layouts, typefaces, canvas sizes and products that differ from the starter label. Manifest `starter-0.7` marks them `split: held_out`.
+- **How they were chosen:** designed to differ from the development label in layout and typeface, not sampled. Expected outcomes were annotated from the rendered pixels (developer review pending).
+- **Not used for tuning:** the extraction prompt and comparison rules were not run against them, and no test checks their outcomes. Tests exclude them from the development regression and per-field checks, and a test fails if any file under `tests/`, `scripts/` or `src/` names a held-out scenario or image. Any reclassification must be recorded in the manifest's `held_out_policy.reclassifications` (currently empty).
+- **Limitation:** two clean, synthetic examples show feasibility on unseen layouts only. They cannot estimate accuracy, and they include no photographed, rotated, low-contrast or small-print label.
+
+### AL-15 offline regression suite (2026-10-25)
+
+- **Revision:** branch `al-15-regression-checks` at `934a7a2` (manifest `starter-0.7`).
+- **Commands and results:** `poetry run pytest` 495 passed, 0 failed, 0 skipped; `poetry run pytest tests/test_regression.py` 36 passed; `poetry run pytest tests/test_fixtures.py` 121 passed; `poetry run ruff check .` passed; `poetry run ruff format --check .` passed (27 files).
+- **What the regression suite does:** for each of the 28 development scenarios a fake provider returns what a faithful model would say for the annotated image (printed text observed, unprinted missing, illegible uncertain, style from the annotation) or fails as the scenario declares. The real `extract_application` and `review_after_extraction` then run, and all 11 outcomes are compared with the manifest. A guard makes any network use or credential lookup fail, and a meta-test shows a wrong expectation is reported.
+- **Scenario coverage (development):**
+
+| Category | Scenarios |
+| --- | --- |
+| Clear match | S01, S02, S05, S08, S10, S12, S13, S22 |
+| Brand case | S02 |
+| Numeric mismatch | S03 |
+| Volume equivalence | S10 (0.75 L against 750 mL) |
+| Warning text | S04, S16 |
+| Warning case | S16 |
+| Warning style | S17, S18 |
+| Front/back evidence | S19 (warning only on the back), S20 (two images, differing warning wording) |
+| Unknown or unresolved evidence | S07, S09, S11, S20, S21 (warning absent), S23 (heavy blur), S24 (smudged heading) |
+| Processing failures | S25 (timeout), S26 (rate limited), S27 (invalid response), S28 (one of two images blocked) |
+
+  S29 and S30 are held out and excluded from this table (see the held-out section above).
+- **Live versus offline:** this suite is offline. It validates parsing, aggregation, comparison rules and the annotations; it does not establish live extraction accuracy or hosted performance. Live runs are separate: `scripts/al13_style_eval.py` and the live results recorded above.
+- **Limitations:** the annotations are the developer's pending review; the fake provider returns what the annotations say, so a wrong annotation passes; the blurred scenarios expect pixel-level ground truth, and the live model was more cautious than the annotation on the heavy-blur image (S23), which this suite does not exercise.
+- **CI:** not added. The minimal CI job (AL-154) was moved to the backlog; the deploy workflow runs ruff and pytest only on pushes to `main`, so pull requests and feature branches are checked locally. No GitHub Actions result is claimed for this branch.
+
 ### Run context
 
 | Item | Recorded value |
