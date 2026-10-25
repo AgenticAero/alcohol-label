@@ -36,8 +36,8 @@ def _clear_form() -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Alcohol Label Verification", page_icon="🥃")
-    st.title("Alcohol Label Verification")
+    st.set_page_config(page_title="Alcohol Label Checker", page_icon="🥃")
+    st.title("Alcohol Label Checker")
     st.info(
         "Scope: English-language U.S. distilled-spirit labels, one application "
         f"at a time, with one or two JPEG/PNG images (up to {MAX_IMAGES})."
