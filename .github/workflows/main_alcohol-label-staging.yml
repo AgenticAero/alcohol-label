@@ -7,6 +7,10 @@ name: Build and deploy Python app to Azure Web App - alcohol-label-staging
 on:
   push:
     branches: [main]
+    # Documentation-only pushes do not change what is deployed.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:
