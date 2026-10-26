@@ -3,7 +3,7 @@ name = "alcohol-label"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "John Michael Egan",email = "mike@agentic.aero"}
+    {name = "John Michael Egan",email = "j.mike.egan@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11,<4.0"

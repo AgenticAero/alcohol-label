@@ -195,6 +195,13 @@ Verify that the evaluator can access both the application and source repository.
 
 Maintain detailed work tracking in Jira and measured evidence in the evaluation document. Update this README as commands and features are verified so it describes the submitted application accurately.
 
+## Author and contact
+
+Developed by John Michael Egan.
+
+- Primary: [mike@agentic.aero](mailto:mike@agentic.aero)
+- Alternate: [j.mike.egan@gmail.com](mailto:j.mike.egan@gmail.com)
+
 ## Copyright and permitted use
 
 Copyright © 2026 John Michael Egan. All rights reserved.
