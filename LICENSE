@@ -1,0 +1,56 @@
+Alcohol Label Checker — Evaluation License
+
+Copyright (c) 2026 John Michael Egan. All rights reserved.
+
+1. Scope
+
+This license applies to the original source code and documentation in
+this repository to the extent owned by the copyright holder
+(the "Software").
+
+2. Permission for hiring evaluation
+
+Prospective employers and their designated reviewers may download,
+copy, install, run, inspect, and modify the Software solely to evaluate
+the author's qualifications for employment or contract work.
+
+Copies may be shared internally with personnel participating in that
+evaluation. This license and copyright notice must accompany all copies
+and substantial portions of the Software.
+
+3. Other uses
+
+Except as expressly permitted above, by applicable law, or by applicable
+hosting-platform terms, no permission is granted to redistribute,
+sublicense, sell, use in production, or incorporate the Software into
+another product or service.
+
+Other uses require prior written permission from the copyright holder.
+All rights not expressly granted are reserved.
+
+4. Third-party materials
+
+Third-party dependencies, fonts, images, sample labels, trademarks, and
+assignment materials remain subject to their respective owners' rights
+and applicable licenses. This license does not grant additional rights
+to those materials.
+
+5. Hosting-platform rights
+
+Nothing in this license limits rights granted under applicable
+hosting-platform terms, including GitHub's terms for viewing and
+forking public repositories.
+
+6. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT HOLDER
+SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY
+ARISING FROM THE SOFTWARE OR ITS USE.
+
+The Software is an experimental prototype. Its output does not
+constitute legal advice, regulatory approval, or a determination
+of compliance with alcohol-labeling requirements.

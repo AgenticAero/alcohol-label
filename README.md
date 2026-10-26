@@ -195,3 +195,10 @@ Verify that the evaluator can access both the application and source repository.
 | [Jira project](https://agentic-team.atlassian.net/jira/software/projects/AL/summary) | Sprints, epics, stories, tasks, acceptance criteria, dependencies and status. |
 
 Maintain detailed work tracking in Jira and measured evidence in the evaluation document. Update this README as commands and features are verified so it describes the submitted application accurately.
+
+## Copyright and permitted use
+
+Copyright © 2026 John Michael Egan. All rights reserved.
+
+Available for hiring evaluation under the terms in [LICENSE](LICENSE).
+Other uses require prior written permission.
