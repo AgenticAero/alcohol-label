@@ -2,7 +2,7 @@
 
 Date: October 21, 2026  
 Status: Proposed approach; no application code, benchmark, deployment, or test results have been produced as part of this document.  
-Basis: The supplied `instructions.md`, Python/Poetry/GitHub setup discussion, three-day scope decisions consolidated from `plan.md`, and the primary sources listed below. This scope supersedes the earlier open-ended sequence; implementation status remains unverified.
+Basis: The supplied `instructions.md`, Python/Poetry/GitHub setup discussion, three-day scope decisions consolidated from prior planning, and the primary sources listed below.
 
 ## 1. Problem and success criteria
 
@@ -10,7 +10,7 @@ Build a standalone reviewer aid that compares submitted application values with 
 
 The reviewer remains responsible for the decision. A result such as “Supported checks passed” describes only the checks actually performed. It is not a certification of complete TTB compliance.
 
-The assignment's critical outcomes are useful verification, approximately five-second results, an obvious interface, and a working deployed URL. Its evaluation criteria also reward maintainable code, reasonable technical choices, error handling, requirement coverage, and documented trade-offs. No scoring weights were supplied. The developer has set a three-working-day prototype budget; an exact submission date/time remains unspecified.
+The assignment's critical outcomes are useful verification, approximately five-second results, an obvious interface, and a working deployed URL. Its evaluation criteria also reward maintainable code, reasonable technical choices, error handling, requirement coverage, and documented trade-offs. No scoring weights were supplied. The developer has set a three-working-day prototype budget.
 
 Important input gap: the brief does not specify how application data reaches the prototype. Extracting label text by itself cannot establish whether it matches an application. Use a manual expected-values form for the committed prototype. A manifest belongs only to optional batch support.
 
