@@ -2,7 +2,7 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-13 comparisons are implemented; the staging deployment is still at Jira AL-10/Jira AL-11, so the AL-12 to AL-14 changes on this branch are not yet deployed. The results screen now shows a summary of discrepancies and unresolved checks, next actions, and a Retry button for retryable failures (Jira AL-14). Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
+**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-15 work are implemented and merged to `main` (pull requests 16 to 19); the deploy workflow succeeded for the AL-14 and AL-15 merges, and the developer confirmed on 2026-10-25 that the AL-12 to AL-14 changes, including the warning boldness checks, work in the deployed app. A recorded fresh-session smoke check of the latest revision is still pending. The results screen now shows a summary of discrepancies and unresolved checks, next actions, and a Retry button for retryable failures (Jira AL-14). Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
 
 **Deployed application:** https://alcohol-label-staging.azurewebsites.net (the first request after idle can take over a minute).
 
