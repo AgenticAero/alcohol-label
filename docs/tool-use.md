@@ -110,7 +110,7 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Output used:** `tests/fixtures/render_starter_labels.py`, `labels/starter-clear.png`, `labels/starter-warning-changed.png`, `tests/fixtures/manifest.json`, `tests/test_fixtures.py`, and the README, evaluation and engineering-plan notes. `poetry add --group dev pillow` changed `pyproject.toml` and `poetry.lock`.
 - **Human review / changes:** The assistant viewed both rendered PNGs and annotated what is visible: a bold uppercase heading, a regular-weight body, and the single changed word. Developer review of the annotations is pending. Provenance for the reference images is as reported by the developer; permission is not confirmed.
 - **Checks performed:** Rendering twice gave identical SHA-256 hashes; `poetry run pytest` (95 passed); `poetry run ruff check .` (passed); `poetry run ruff format --check .` (passed); `git diff --check` (clean).
-- **Pending checks / limitations:** Offline schema and manifest checks only; no extraction was run on these images, so they say nothing about extraction accuracy or boldness detection. Rendering depends on the installed DejaVu fonts, so the committed PNGs are the source of truth. The reference images are unannotated and their permitted use is unconfirmed.
+- **Pending checks / limitations:** Offline schema and manifest checks only; no extraction was run on these images, so they say nothing about extraction accuracy or boldness detection. Rendering depends on the installed DejaVu fonts, so the committed PNGs are the source of truth. The reference images were unannotated and their permitted use was unconfirmed; they were removed from the repository on 2026-10-25 (they remain in git history).
 
 ### 2026-10-23 — AL-6 extraction and hosting feasibility
 
@@ -160,7 +160,7 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Output used:** `presentation.py`, `app.py` changes, `.streamlit/config.toml`, new tests, two blurred or cropped fixtures added by the developer, and documentation updates. A throwaway local proxy that returns HTTP 429 once was used to exercise Retry; it is not in the repository.
 - **Human review / changes:** The developer approved the plan, the Retry button and the pinned light theme, supplied the cropped and blurred images, and committed each sub-task. The developer chose r8 blur after r4 did not make the model uncertain.
 - **Checks performed:** `poetry run pytest` (422 passed), `poetry run ruff check .`, `poetry run ruff format --check .`, Streamlit test-harness renders, computed WCAG contrast ratios, and the browser walkthrough recorded in `docs/evaluation.md`.
-- **Pending checks / limitations:** Single-run walkthrough on the developer's machine; not deployed or smoke-checked; screen-reader behavior untested; five findings listed in `docs/evaluation.md` are not yet fixed, including a style judgement accepted on an unreadable warning.
+- **Pending checks / limitations:** Single-run walkthrough on the developer's machine; at the time of writing not deployed or smoke-checked (the developer later confirmed the deployed app works, see README status); screen-reader behavior untested; five findings listed in `docs/evaluation.md` are not yet fixed, including a style judgement accepted on an unreadable warning.
 
 ### 2026-10-25 — AL-15 regression fixtures and automated checks
 

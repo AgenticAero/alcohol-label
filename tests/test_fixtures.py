@@ -34,7 +34,7 @@ from alcohol_label.schemas import (
     application_to_dict,
 )
 
-from .support import FIXTURES, MANIFEST, REFERENCES, SCENARIOS, STARTERS
+from .support import FIXTURES, MANIFEST, SCENARIOS, STARTERS
 
 
 def _application(scenario_id: str) -> dict:
@@ -101,12 +101,11 @@ def test_scenario_images_exist_and_match_application_references(scenario):
 
 
 def test_every_stored_image_is_listed_once_with_matching_file_facts():
-    listed = {**STARTERS, **REFERENCES}
-    assert len(listed) == len(STARTERS) + len(REFERENCES)
     stored = {f"labels/{p.name}" for p in (FIXTURES / "labels").iterdir()}
-    assert stored == set(listed)
+    assert stored == set(STARTERS)
+    assert len(STARTERS) == len(MANIFEST["images"])
 
-    for name, entry in listed.items():
+    for name, entry in STARTERS.items():
         path = FIXTURES / name
         with Image.open(path) as image:
             assert (image.format, image.width, image.height) == (
@@ -119,17 +118,13 @@ def test_every_stored_image_is_listed_once_with_matching_file_facts():
         assert hashlib.sha256(data).hexdigest() == entry["sha256"], name
 
 
-def test_starters_are_synthetic_and_references_have_sources():
+def test_every_fixture_is_synthetic_and_no_third_party_images_are_kept():
+    assert "reference_images" not in MANIFEST
     for entry in STARTERS.values():
         assert entry["provenance"]["type"] == "synthetic"
         assert entry["provenance"]["generator"].strip()
         assert entry["provenance"]["permitted_use"].strip()
-    for name, entry in REFERENCES.items():
-        assert entry["source_url"].startswith("https://"), name
-        assert "srsltid" not in entry["source_url"], name
-        assert entry["permission"].strip(), name
-    used = {f for s in SCENARIOS.values() for f in s["image_files"]}
-    assert used.isdisjoint(REFERENCES)
+        assert "source_url" not in entry
 
 
 def test_expected_outcomes_cover_every_check_with_valid_outcomes():
