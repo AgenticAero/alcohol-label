@@ -1,3 +1,5 @@
+# Copyright (c) 2026 John Michael Egan. All rights reserved.
+# Hiring evaluation permitted under the LICENSE file at the repository root.
 """Shared identifiers and states for verification data contracts.
 
 Processing failures (timeouts, invalid provider responses) are deliberately not

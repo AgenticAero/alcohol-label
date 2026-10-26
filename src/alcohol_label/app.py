@@ -1,3 +1,5 @@
+# Copyright (c) 2026 John Michael Egan. All rights reserved.
+# Hiring evaluation permitted under the LICENSE file at the repository root.
 """Streamlit entry point: expected-value form, label upload and Verify."""
 
 import pandas as pd

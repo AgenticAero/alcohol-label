@@ -1,3 +1,5 @@
+# Copyright (c) 2026 John Michael Egan. All rights reserved.
+# Hiring evaluation permitted under the LICENSE file at the repository root.
 """Check results: field and warning comparisons after extraction."""
 
 from collections.abc import Sequence

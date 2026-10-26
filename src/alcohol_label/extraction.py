@@ -1,3 +1,5 @@
+# Copyright (c) 2026 John Michael Egan. All rights reserved.
+# Hiring evaluation permitted under the LICENSE file at the repository root.
 """Image-only extraction through the OpenAI Responses API."""
 
 from __future__ import annotations

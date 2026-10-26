@@ -1,3 +1,5 @@
+# Copyright (c) 2026 John Michael Egan. All rights reserved.
+# Hiring evaluation permitted under the LICENSE file at the repository root.
 """Reviewer-facing summary of a review; no UI imports so it can be tested offline."""
 
 from collections import Counter
