@@ -234,6 +234,15 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Limitations:** the annotations are the developer's pending review; the fake provider returns what the annotations say, so a wrong annotation passes; the blurred scenarios expect pixel-level ground truth, and the live model was more cautious than the annotation on the heavy-blur image (S23), which this suite does not exercise.
 - **CI:** not added. The minimal CI job (AL-154) was moved to the backlog; the deploy workflow runs ruff and pytest only on pushes to `main`, so pull requests and feature branches are checked locally. No GitHub Actions result is claimed for this branch.
 
+### Deployed smoke check (2026-10-25)
+
+- **Revision and host:** commit `1beb0b8` on `main` (the deploy workflow succeeded for it), https://alcohol-label-staging.azurewebsites.net, Azure App Service B1. Performed by the developer in a fresh browser session; the observations below are the developer's report, not logs.
+- **Cold start:** the first page load took about a minute.
+- **Result:** all six planned checks behaved as expected: (1) the page loads with the form, upload, Verify and Clear form and the scope notices; (2) an empty Verify shows the input errors without a provider call; (3) the S01 values with `starter-clear.png` gave the match result; (4) changing the ABV to 40 gave the alcohol-content discrepancy; (5) `warning-heading-regular.png` gave the heading-bold discrepancy; (6) `warn-heading-blurry.png` gave an unresolved (needs review) result with next steps.
+- **Verify duration reported for the four live checks:** check 3, 5.44 s; check 4, 4.68 s; check 5, 5.90 s; check 6, 6.45 s (median about 5.7 s, range 4.68 to 6.45 s). The report did not say whether these are the displayed request latency or total time to the visible result, so they are not a measured Verify-to-result time.
+- **Against the target:** one of four runs was under five seconds, so the five-second target is not met on this sample. Four runs of one image profile, warm after the cold start, do not give a p95 or a production guarantee.
+- **Not covered:** the retry path (no easy way to force a provider failure on the deployed app), the non-retryable error, keyboard and screen-reader use, a second browser, and the held-out examples.
+
 ### Run context
 
 | Item | Recorded value |
