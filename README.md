@@ -2,8 +2,6 @@
 
 A Python prototype that helps a reviewer compare alcohol label images with expected application values and identify discrepancies, missing evidence and checks that need human review.
 
-**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-15 work are implemented and merged to `main` (pull requests 16 to 19); the deploy workflow succeeded for the AL-14 and AL-15 merges, and the developer confirmed on 2026-10-25 that the AL-12 to AL-14 changes, including the warning boldness checks, work in the deployed app. A fresh-session smoke check of commit `1beb0b8` on 2026-10-25 behaved as expected for six checks (see [Evaluation](docs/evaluation.md)); Verify took 4.68 to 6.45 s on four runs, so the five-second target is not met. The results screen now shows a summary of discrepancies and unresolved checks, next actions, and a Retry button for retryable failures (Jira AL-14). Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
-
 **Deployed application:** https://alcohol-label-staging.azurewebsites.net
 
 > **Please read before testing the deployed app: it can look slow or stuck, but it is working.**
@@ -12,6 +10,8 @@ A Python prototype that helps a reviewer compare alcohol label images with expec
 > - **Each Verify takes several seconds.** The label images are read by an external AI service (the OpenAI API). In the deployed smoke check Verify took 4.68 to 6.45 seconds on four runs (local requests ranged from about 3.5 to 8.5 seconds, with one slower run at about 17 seconds), and a spinner ("Reading text from label images...") shows while it works. Do not click Verify again until the result appears. The five-second target is not met; see [Evaluation](docs/evaluation.md).
 > - **Results can differ between runs.** The reading is done by an AI model, so a blurry label may be flagged "needs review" in one run and read in another. The sample labels and what to expect are in [Try it](#try-it-sample-labels-and-what-to-expect).
 > - **If you see an error,** the app tells you what happened and what to do. A temporary failure offers a **Retry** button that keeps your entries and images.
+
+**Status:** Jira AL-8 extraction and the Jira AL-9 through Jira AL-15 work are implemented and merged to `main` (pull requests 16 to 19); the deploy workflow succeeded for the AL-14 and AL-15 merges, and the developer confirmed on 2026-10-25 that the AL-12 to AL-14 changes, including the warning boldness checks, work in the deployed app. A fresh-session smoke check of commit `1beb0b8` on 2026-10-25 behaved as expected for six checks (see [Evaluation](docs/evaluation.md)); Verify took 4.68 to 6.45 s on four runs, so the five-second target is not met. The results screen now shows a summary of discrepancies and unresolved checks, next actions, and a Retry button for retryable failures (Jira AL-14). Warning heading and body font weight are judged visually from the image in the same extraction request; they are validated only on three clear synthetic fixtures. Live extraction accuracy beyond those checks and hosted performance remain unevaluated.
 
 ## Project overview
 
@@ -24,7 +24,6 @@ The intended workflow is:
 
 OCR or vision-based extraction will capture observations from the images. Separate Python comparison and rule functions will evaluate those observations. Ambiguous, unsupported or incomplete checks must remain visible and cannot produce an all-clear result. The reviewer retains responsibility for the final decision.
 
-The goal is a working, deployed prototype within three working days, with reproducible setup and documented correctness and performance evidence.
 
 ## Prototype scope
 
@@ -37,7 +36,7 @@ The goal is a working, deployed prototype within three working days, with reprod
 - Explained results with source evidence, explicit uncertainty and recoverable input/processing errors. Warning wording and uppercase heading are checked independently against 27 CFR 16.21; heading and body font weight are judged visually from the image, and an unclear or missing judgement is shown as needs review with the original image. Each needs-review check says what to do next, for example upload a clearer image; provider and extraction details are in a collapsed Technical details section.
 - A deployed URL, focused tests and measured evaluation results.
 
-The proposed performance target is **p95 Verify-to-visible-result at or below five seconds** for the supported single-application profile. This target has not been measured or achieved. Measurement conditions and results will be recorded in [Evaluation](docs/evaluation.md).
+The proposed performance target is **p95 Verify-to-visible-result at or below five seconds** for the supported single-application profile. Measurement conditions and results will be recorded in [Evaluation](docs/evaluation.md).
 
 ### Limitations and deferred work
 
