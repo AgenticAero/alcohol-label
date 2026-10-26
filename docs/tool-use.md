@@ -171,3 +171,13 @@ Pillow 13.0.0 is a dev-group dependency used only by the fixture rendering scrip
 - **Human review / changes:** The developer approved the plan, provided the blurred and cropped images, chose to skip the CI sub-task, and questioned the purpose of held-out images, which led to a plain-language explanation. The assistant viewed every new image to annotate it; developer review of those annotations is pending.
 - **Checks performed:** `poetry run pytest` (495 passed), `poetry run ruff check .`, `poetry run ruff format --check .`, and a planted-leak check proving the held-out exclusion test can fail.
 - **Pending checks / limitations:** The suite is offline and annotation-driven, so it cannot show live accuracy, and wrong annotations would pass. Held-out examples are two clean synthetic labels. No CI run exists for this branch.
+
+### 2026-10-26 — AL-18 README and documentation consolidation
+
+- **Tool / version:** GitHub Copilot (VS Code agent), Claude Sonnet 5.5; `gh` CLI for pull request and deploy-run history; Atlassian MCP read-only Jira lookup.
+- **Purpose:** Prioritize the remaining backlog for the time and budget left, assess the AL-18 acceptance criteria, and correct the README: factual errors, stale deployment and test sections, approach and data-handling text, limitations, and a clean-checkout setup check.
+- **Inputs:** AL-18 acceptance criteria, the README, engineering plan, evaluation and tool-use docs, the extraction code defaults, `.env.example`, GitHub pull request and workflow run history, and the developer's smoke-check report.
+- **Output used:** README changes (how it works, technology and setup facts, data handling, measured gaps and limitations, tests table, deployment table), the clean-checkout and smoke-check records in `docs/evaluation.md`, and the workflow change to skip deploys for documentation-only pushes.
+- **Human review / changes:** The developer deferred the sample-download UI (AL-94) and the CI job (AL-154), asked for the third-party images to be removed, performed the smoke check, supplied its results, and corrected the assistant's reading of the model default. The assistant did not run the live smoke check.
+- **Checks performed:** a clean clone with install, environment check, `poetry run pytest` (495 passed), ruff check and format, and an app start with a health check; a search of `src/` for logging and disk writes; a scan of the documentation for secrets (none found).
+- **Pending checks / limitations:** the hosted correctness and p95 performance evaluation (AL-17) and robustness work (AL-16) were not done. The data-handling statement rests on a code search and Streamlit's documented in-memory behavior, not on a runtime test.

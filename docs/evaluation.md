@@ -243,6 +243,13 @@ Script: `scripts/al6_extraction_spike.py` (throwaway, not the adapter). Model `g
 - **Against the target:** three of the four request latencies alone exceeded five seconds, so the Verify-to-result time did too for those runs; the five-second target is not met on this sample. Four warm runs of one image profile do not give a p95 or a production guarantee.
 - **Not covered:** the retry path (no easy way to force a provider failure on the deployed app), the non-retryable error, keyboard and screen-reader use, a second browser, and the held-out examples.
 
+### Clean-checkout setup check (2026-10-26)
+
+- **What was run:** `git clone https://github.com/AgenticAero/alcohol-label.git` into an empty temp directory (commit `b2c81a5`), Python 3.11.11, Poetry 2.2.1, no `.env` file and no `OPENAI_*` variables set. Then `poetry install`, the README environment check, `poetry run pytest`, `poetry run ruff check .`, `poetry run ruff format --check .`, and `poetry run streamlit run src/alcohol_label/app.py`.
+- **Result:** all succeeded: 495 passed, 0 failed, 0 skipped; ruff check and format passed (27 files); the app started and returned HTTP 200 from its health endpoint without credentials. No setup defect was found, so no README setup step changed.
+- **Not covered:** a Windows or macOS setup, a different Python version, and live extraction (it needs credentials). The temp clone was deleted afterwards.
+- **Deployed revision note:** the smoke check above was on `1beb0b8`. The latest successful deploy run was `dc55197`, which differs from it only by license header comments and author metadata in `pyproject.toml` (checked by diff). It was not re-smoke-checked.
+
 ### Run context
 
 | Item | Recorded value |
