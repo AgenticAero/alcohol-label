@@ -9,7 +9,6 @@ FIXTURES = Path(__file__).parent / "fixtures"
 MANIFEST = json.loads((FIXTURES / "manifest.json").read_text())
 SCENARIOS = {s["scenario_id"]: s for s in MANIFEST["scenarios"]}
 STARTERS = {i["file"]: i for i in MANIFEST["images"]}
-REFERENCES = {i["file"]: i for i in MANIFEST["reference_images"]["images"]}
 
 
 def _judgement(text: str | None) -> str:

@@ -77,17 +77,60 @@ Keep credentials outside version control. Document which image data is sent to a
 
     poetry run streamlit run src/alcohol_label/app.py
 
-**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider and shows raw observed fields, their state and source image ID. Per-image client-side provider request durations are displayed separately from total Verify time. The brand, class/type, alcohol content, net contents, producer name, producer address, and (for imports) country-of-origin checks are compared and explained with their evidence. Warning wording and heading case are also checked separately; boldness checks remain not evaluated, so a review is not reported as all clear. Extraction alone is not a pass. If provider settings are missing or a request fails, the app shows a processing error and leaves checks unresolved.
+**Local URL and expected startup behavior:** Streamlit serves http://localhost:8501. The page shows the expected-value form, an image upload (one or two JPEG/PNG files), **Verify** and **Clear form**. Verify sends each supplied image to the configured extraction provider. The results show a summary (Pass or Not a pass, with counts for matched, discrepancy, needs review, not evaluated and not applicable, and the checks named), what to do next, a table with expected value, observed value, status and reason for every check, and the label images with their IDs. The checks are brand, class/type, alcohol content, net contents, producer name and address, country of origin for imports, warning wording, uppercase heading, and warning heading and body font weight. Font weight is judged visually from the image, and physical type size is not checked. Unclear or unreadable evidence is shown as needs review with a next step, such as uploading a clearer image; a retryable provider failure offers a Retry button that keeps the form and images. Extraction alone is never a pass, and an incomplete review is never reported as all clear. If provider settings are missing or a request fails, the app shows a processing error and leaves the checks not evaluated. Provider, model, request latency and the raw observed fields are in a collapsed Technical details section.
 
-**Sample review:** Thirty synthetic scenarios (`S01` to `S30`) across nineteen synthetic labels, with expected application values,
-expected outcomes and provenance, are in
-[`tests/fixtures/manifest.json`](tests/fixtures/manifest.json). Twenty-eight are development scenarios: the clear match, case-only brand variation,
-ABV mismatch, 0.75 L equivalence, changed warning word, title-case heading, non-bold heading and all-bold warning, origin, net-contents,
-proof-only and address cases, front/back evidence, blurred and smudged labels, an absent warning, and four processing failures.
-Two (`S29`, `S30`) are held out for the Day 3 live evaluation and are never used for tuning. Annotations are pending developer review.
+## Try it: sample labels and what to expect
 
-**Regenerating starter images (optional):** The committed PNGs are the
-authoritative fixtures. Using them does not require DejaVu fonts.
+All sample labels are synthetic and fictional. They are in [`tests/fixtures/labels/`](tests/fixtures/labels/). The values to type into the form and the expected result for each are in [`tests/fixtures/manifest.json`](tests/fixtures/manifest.json) (each scenario's `application` and `expected_outcomes`) and summarized below.
+
+**To try one:** type the values into the form (any Application ID), upload the image or images listed (two images are the front and back of one label), and click **Verify**. The summary at the top says **Pass** only if every applicable check matches; anything else is **Not a pass** with the checks named.
+
+- **Set A** (used by most scenarios): Brand `OLD TOM`; Class/type `Straight Bourbon Whiskey`; ABV `45.0`; Net contents `750 mL`; Producer `Example Distillery`; Address `Louisville, KY`; not imported.
+- **Set B** (imported): Brand `HIGHLAND REEL`; Class/type `Single Malt Scotch Whisky`; ABV `43.0`; Net contents `700 mL`; Producer `Example Imports`; Address `New York, NY`; Imported on; Country `Scotland`.
+
+| Scenario | Image(s) | Enter these values | Expected result |
+| --- | --- | --- | --- |
+| `S01-clear-match` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A | Pass: all applicable checks match |
+| `S02-brand-case-only` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A with Brand: Old Tom | Pass: all applicable checks match |
+| `S03-abv-mismatch` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A with ABV: 40.0 | Not a pass: alcohol content: discrepancy |
+| `S04-warning-text-changed` | [starter-warning-changed.png](tests/fixtures/labels/starter-warning-changed.png) | Set A | Not a pass: warning wording: discrepancy |
+| `S05-import-origin-prefix` | [import-product-of.png](tests/fixtures/labels/import-product-of.png) | Set B | Pass: all applicable checks match |
+| `S06-import-origin-differs` | [import-product-of.png](tests/fixtures/labels/import-product-of.png) | Set B with Country: Ireland | Not a pass: country of origin: discrepancy |
+| `S07-import-origin-not-observed` | [import-no-origin.png](tests/fixtures/labels/import-no-origin.png) | Set B | Not a pass: country of origin: needs review |
+| `S08-net-metric-and-floz` | [net-metric-and-floz.png](tests/fixtures/labels/net-metric-and-floz.png) | Set A | Pass: all applicable checks match |
+| `S09-net-floz-only` | [net-floz-only.png](tests/fixtures/labels/net-floz-only.png) | Set A | Not a pass: net contents: needs review |
+| `S10-net-litres-expected` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A with Net contents: 0.75 L | Pass: all applicable checks match |
+| `S11-abv-proof-only` | [abv-proof-only.png](tests/fixtures/labels/abv-proof-only.png) | Set A | Not a pass: alcohol content: needs review |
+| `S12-address-within-street-line` | [producer-street.png](tests/fixtures/labels/producer-street.png) | Set A | Pass: all applicable checks match |
+| `S13-address-street-abbreviation` | [producer-street.png](tests/fixtures/labels/producer-street.png) | Set A with Address: 123 Main Street, Louisville, KY | Pass: all applicable checks match |
+| `S14-address-different-city` | [producer-street.png](tests/fixtures/labels/producer-street.png) | Set A with Address: Bardstown, KY | Not a pass: producer address: discrepancy |
+| `S15-address-longer-city-name` | [producer-new-louisville.png](tests/fixtures/labels/producer-new-louisville.png) | Set A | Not a pass: producer address: discrepancy |
+| `S16-warning-heading-title-case` | [starter-warning-title-case.png](tests/fixtures/labels/starter-warning-title-case.png) | Set A | Not a pass: warning wording: discrepancy; warning heading case: discrepancy |
+| `S17-warning-heading-not-bold` | [warning-heading-regular.png](tests/fixtures/labels/warning-heading-regular.png) | Set A | Not a pass: warning heading bold: discrepancy |
+| `S18-warning-all-bold` | [warning-all-bold.png](tests/fixtures/labels/warning-all-bold.png) | Set A | Not a pass: warning body not bold: discrepancy |
+| `S19-front-back-warning-on-back` | [front-no-warning.png](tests/fixtures/labels/front-no-warning.png) (front)<br>[back-warning-only.png](tests/fixtures/labels/back-warning-only.png) (back) | Set A | Pass: all applicable checks match |
+| `S20-front-back-warning-conflict` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) (front)<br>[starter-warning-changed.png](tests/fixtures/labels/starter-warning-changed.png) (back) | Set A | Not a pass: warning wording: needs review; warning heading case: needs review |
+| `S21-warning-absent` | [front-no-warning.png](tests/fixtures/labels/front-no-warning.png) | Set A | Not a pass: warning wording: needs review; warning heading case: needs review; warning heading bold: needs review; warning body not bold: needs review |
+| `S22-blur-mild-legible` | [starter-clear-blur-r4.png](tests/fixtures/labels/starter-clear-blur-r4.png) | Set A | Pass: all applicable checks match |
+| `S23-blur-heavy-unreadable` | [starter-clear-blur-r8.png](tests/fixtures/labels/starter-clear-blur-r8.png) | Set A | Not a pass: alcohol content: needs review; warning wording: needs review; warning heading case: needs review; warning heading bold: needs review; warning body not bold: needs review |
+| `S24-warning-heading-smudged` | [warn-heading-blurry.png](tests/fixtures/labels/warn-heading-blurry.png) | Set A | Not a pass: warning wording: needs review; warning heading case: needs review; warning heading bold: needs review; warning body not bold: needs review |
+| `S25-provider-timeout` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A | Not a pass: provider failure `provider_timeout`, all checks not evaluated. Simulated in the offline tests; cannot be reproduced by uploading |
+| `S26-provider-rate-limited` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A | Not a pass: provider failure `rate_limited`, all checks not evaluated. Simulated in the offline tests; cannot be reproduced by uploading |
+| `S27-provider-invalid-response` | [starter-clear.png](tests/fixtures/labels/starter-clear.png) | Set A | Not a pass: provider failure `invalid_provider_response`, all checks not evaluated. Simulated in the offline tests; cannot be reproduced by uploading |
+| `S28-provider-failure-one-of-two-images` | [front-no-warning.png](tests/fixtures/labels/front-no-warning.png) (front)<br>[back-warning-only.png](tests/fixtures/labels/back-warning-only.png) (back) | Set A | Not a pass: provider failure `endpoint_blocked`, all checks not evaluated. Simulated in the offline tests; cannot be reproduced by uploading |
+| `S29-held-out-wide-two-column` (held out) | [held-out-wide-two-column.png](tests/fixtures/labels/held-out-wide-two-column.png) | Own values: Brand: BLACK HEATH; Class/type: Rye Whiskey; ABV: 50.0; Net contents: 1 L; Producer: Heath Spirits Co.; Address: Frankfort, KY | Pass: all applicable checks match |
+| `S30-held-out-tall-narrow` (held out) | [held-out-tall-narrow.png](tests/fixtures/labels/held-out-tall-narrow.png) | Own values: Brand: Northgate; Class/type: Blended Scotch Whisky; ABV: 40.0; Net contents: 700 mL; Producer: Northgate Imports; Address: Chicago, IL; Imported: yes; Country: Scotland | Not a pass: warning heading bold: discrepancy |
+
+**How to read the expected results**
+- They are the annotated ground truth for what is visible on each label, written from the pixels (annotations are pending developer review). They are not a promise about the live model: the blurred and smudged labels (`S22` to `S24`) are the likeliest to differ, and the model may flag more fields as needs review than listed.
+- Country of origin is not applicable for domestic products (all of Set A), so it never blocks a pass.
+- `S29` and `S30` are held out for the Day 3 evaluation: they were never used to tune the prompt or rules.
+- Scenarios `S25` to `S28` simulate provider failures for the offline regression tests; they can't be triggered by uploading an image.
+- The offline regression suite (`poetry run pytest tests/test_regression.py`) checks every development scenario against these expectations without credentials. It does not measure live extraction accuracy.
+
+### Regenerating the sample images (optional)
+
+The committed PNGs are the authoritative fixtures. Using them does not require DejaVu fonts.
 
 Regeneration requires Pillow in the Poetry environment and these font files:
 `DejaVuSans.ttf`, `DejaVuSans-Bold.ttf`, `DejaVuSerif.ttf` and
@@ -102,8 +145,8 @@ If the fonts are installed elsewhere, supply their directory:
     poetry run python tests/fixtures/render_starter_labels.py --font-dir "/path/to/fonts"
 
 Rendering can vary with font versions, Pillow and the rendering environment.
-After regeneration, visually inspect both images and confirm that they match
-their annotations and differ only in the intended warning word. Update the
+After regeneration, visually inspect each image and confirm that it matches
+its annotation and differs from the starter label only as intended. Update the
 manifest hashes only after accepting any changes; investigate unexpected
 differences before committing.
 
